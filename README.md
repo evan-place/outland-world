@@ -73,3 +73,26 @@ Licensed Outland fonts live in `public/fonts/`.
 ## Deploy
 
 Static output in `dist/` — deploy to Vercel, Netlify, or GitHub Pages.
+
+```bash
+npm run build
+```
+
+For GitHub Pages, set `GITHUB_PAGES=true` when building so asset paths use `/outland-world/`:
+
+```bash
+GITHUB_PAGES=true npm run build
+```
+
+Then enable Pages from the `dist` folder or use the included `.github/workflows/deploy.yml`.
+
+### Push to GitHub
+
+The repo is initialized locally. Create/push manually if needed:
+
+```bash
+gh repo create outland-world --public --source=. --remote=origin
+git push -u origin main
+```
+
+If push is rejected due to workflow scope, push from the CLI with full `workflow` scope or add the workflow file after the first push.
