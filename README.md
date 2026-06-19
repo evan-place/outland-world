@@ -2,6 +2,31 @@
 
 Scroll-driven narrative site for Outland — ambient document collage with WebGL drift, hybrid snap-scroll story beats, and warp text transitions.
 
+## Local testing
+
+From the project folder:
+
+```bash
+cd "/Users/evanplace/Documents/Cursor Projects/outland-world"
+npm install
+npm start
+```
+
+Then open **http://localhost:5173/** in your browser.
+
+- **Scroll** to move through the 15 story beats (warp transitions between them).
+- **Hover** any drifting document asset to slow all motion.
+- **Edit live**: changes to `src/data/story.json`, `src/data/assets.json`, or styles reload automatically.
+
+To test the production build locally:
+
+```bash
+npm run build
+npm run preview
+```
+
+Open the URL printed by `preview` (usually http://localhost:4173/).
+
 ## Development
 
 ```bash
@@ -9,12 +34,7 @@ npm install
 npm run dev
 ```
 
-## Build
-
-```bash
-npm run build
-npm run preview
-```
+(`npm start` is an alias for `npm run dev`.)
 
 ## Validate assets
 
@@ -70,6 +90,13 @@ Set `"enabled": false` to hide without deleting.
 
 Licensed Outland fonts live in `public/fonts/`.
 
+## Build
+
+```bash
+npm run build
+npm run preview
+```
+
 ## Deploy
 
 Static output in `dist/` — deploy to Vercel, Netlify, or GitHub Pages.
@@ -86,13 +113,4 @@ GITHUB_PAGES=true npm run build
 
 Then enable Pages from the `dist` folder or use the included `.github/workflows/deploy.yml`.
 
-### Push to GitHub
-
-The repo is initialized locally. Create/push manually if needed:
-
-```bash
-gh repo create outland-world --public --source=. --remote=origin
-git push -u origin main
-```
-
-If push is rejected due to workflow scope, push from the CLI with full `workflow` scope or add the workflow file after the first push.
+**Repo:** https://github.com/evan-place/outland-world
