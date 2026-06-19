@@ -1,0 +1,152 @@
+.chrome-logo {
+  position: fixed;
+  top: 16px;
+  left: 134px;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.chrome-logo img {
+  display: block;
+  height: 45px;
+  width: auto;
+}
+
+.chrome-rail {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: var(--rail-width);
+  height: 100vh;
+  z-index: 10;
+  border-right: 1px solid var(--system-grey);
+  pointer-events: none;
+}
+
+.rail-inner {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  height: 100%;
+  padding: 16px;
+  gap: 0;
+}
+
+.rail-dept {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  margin: 0;
+  width: 22px;
+  font-family: var(--font-serif);
+  font-size: clamp(18px, 2vw, 31px);
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  mix-blend-mode: exclusion;
+}
+
+.rail-dept em {
+  font-style: italic;
+}
+
+.rail-meta {
+  display: flex;
+  flex-direction: row;
+  height: 100%;
+  align-items: flex-start;
+}
+
+.rail-meta-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 12px;
+  gap: 8px;
+}
+
+.rail-meta-col--border {
+  border-left: 1px solid var(--system-grey);
+  border-right: 1px solid var(--system-grey);
+  height: 175px;
+  justify-content: center;
+}
+
+.rail-label {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-family: var(--font-screen);
+  font-size: 12.5px;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.rail-label--tall {
+  height: 114px;
+}
+
+.chrome-cta {
+  position: fixed;
+  bottom: 48px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  pointer-events: auto;
+}
+
+.cta-pill {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  color: var(--monorail-white);
+  background: transparent;
+  border: 1px solid var(--monorail-white);
+  border-radius: 200px;
+  padding: 16px;
+  cursor: pointer;
+  mix-blend-mode: exclusion;
+}
+
+.cta-pill:hover {
+  opacity: 0.85;
+}
+
+.cta-wave {
+  mix-blend-mode: exclusion;
+  display: block;
+}
+
+@media (max-width: 768px) {
+  .chrome-logo {
+    left: 24px;
+    top: 12px;
+  }
+
+  .chrome-logo img {
+    height: 32px;
+  }
+
+  .chrome-rail {
+    width: 72px;
+  }
+
+  .rail-dept {
+    font-size: 16px;
+    width: 16px;
+  }
+
+  .rail-meta-col {
+    padding: 0 6px;
+  }
+
+  .chrome-cta {
+    bottom: 24px;
+  }
+
+  .cta-pill {
+    font-size: 13px;
+    padding: 12px 14px;
+  }
+}

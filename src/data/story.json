@@ -1,0 +1,79 @@
+{
+  "beats": [
+    {
+      "id": "beat-01",
+      "html": "Let's imagine what's possible.",
+      "style": "serif-lg"
+    },
+    {
+      "id": "beat-02",
+      "html": "Every new possibility begins with <em>curiosity</em>.",
+      "style": "serif-lg"
+    },
+    {
+      "id": "beat-03",
+      "html": "An idea worth exploring. A story waiting to be told. A world waiting to exist.",
+      "style": "serif-lg"
+    },
+    {
+      "id": "beat-04",
+      "html": "Outland was founded on the belief that creativity doesn't stand still. Every new technology opens another way of thinking, another way of building and another opportunity to imagine what could become.",
+      "style": "serif-md"
+    },
+    {
+      "id": "beat-05",
+      "html": "We work at the intersection of imagination, design and emerging technology, collaborating with visionary founders and ambitious teams to build worlds that move people, systems that evolve and experiences that stay with them.",
+      "style": "serif-md"
+    },
+    {
+      "id": "beat-06",
+      "html": "Every project begins with narrative.",
+      "style": "serif-lg"
+    },
+    {
+      "id": "beat-07",
+      "html": "We define the world before we design the system. The feeling before the visuals. The experience before the interface.",
+      "style": "serif-lg"
+    },
+    {
+      "id": "beat-08",
+      "html": "From there, we explore.",
+      "style": "serif-lg"
+    },
+    {
+      "id": "beat-09",
+      "html": "Through co-creation, experimentation and emerging technologies, ideas become identities. Identities become systems. Systems become experiences people can step into.",
+      "style": "serif-md"
+    },
+    {
+      "id": "beat-10",
+      "html": "From foundational assets through to generative tools and creative frameworks, everything is designed to carry the work further, opening up new possibilities long after launch.",
+      "style": "serif-md"
+    },
+    {
+      "id": "beat-11",
+      "html": "The most compelling experiences are rarely born from following convention. They begin by imagining what convention could become.",
+      "style": "serif-md"
+    },
+    {
+      "id": "beat-12",
+      "html": "We still feel like we're at the beginning.",
+      "style": "serif-lg"
+    },
+    {
+      "id": "beat-13",
+      "html": "More experience. More ambition. The same mindset.",
+      "style": "serif-lg"
+    },
+    {
+      "id": "beat-14",
+      "html": "The only way to move forward is to explore.",
+      "style": "serif-lg"
+    },
+    {
+      "id": "beat-15",
+      "html": "Come wander with us.",
+      "style": "serif-xl"
+    }
+  ]
+}

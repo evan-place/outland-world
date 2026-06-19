@@ -1,0 +1,15 @@
+:root {
+  --foundation-black: #1d1c1a;
+  --monorail-white: #fcfcf5;
+  --system-grey: #444241;
+
+  --font-sans: "Px Grotesk", system-ui, sans-serif;
+  --font-mono: "Px Grotesk Mono", ui-monospace, monospace;
+  --font-serif: "Ivory LL", Georgia, serif;
+  --font-screen: "Px Grotesk Screen", var(--font-sans);
+
+  --story-max-width: 514px;
+  --safe-zone-width: 514px;
+  --safe-zone-height: 40vh;
+  --rail-width: 118px;
+}
