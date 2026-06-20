@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { SIZE_CLASS_PRESETS, HOVER, SAFE_ZONE, ASSET_FIELD } from "../config.js";
+import { assetUrl } from "../utils/asset-url.js";
 
 /** Assets drift toward the camera (+Z) and respawn far behind only once off-screen. */
 const Z_SPAWN = -26;
@@ -231,7 +232,7 @@ export class AssetField {
     await Promise.all(
       assets.map(async (entry) => {
         try {
-          const tex = await loader.loadAsync(entry.src);
+          const tex = await loader.loadAsync(assetUrl(entry.src));
           tex.colorSpace = THREE.SRGBColorSpace;
 
           const instanceCount = entry.instances ?? defaultInstances;
