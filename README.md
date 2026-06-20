@@ -149,6 +149,12 @@ npm run build
 npm run preview
 ```
 
+## Live site
+
+**https://evan-place.github.io/outland-world/**
+
+Pushes to `main` auto-deploy via GitHub Actions (`.github/workflows/deploy.yml`).
+
 ## Deploy
 
 Static output in `dist/` — deploy to Vercel, Netlify, or GitHub Pages.
