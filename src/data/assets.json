@@ -2,6 +2,9 @@
   "settings": {
     "instancesPerAsset": 2,
     "spawnFadeDistance": 7,
+    "vanishingPoint": { "x": 0, "y": 0 },
+    "vanishJitter": 0.45,
+    "spreadEndZ": -2.5,
     "depthScale": {
       "spawn": 0.1,
       "front": 1.35

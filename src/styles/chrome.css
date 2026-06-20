@@ -118,6 +118,40 @@
   display: block;
 }
 
+.story-progress {
+  position: fixed;
+  bottom: 108px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  width: 157px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s ease;
+}
+
+.story-progress--visible {
+  opacity: 1;
+}
+
+.story-progress__track {
+  position: relative;
+  width: 100%;
+  height: 4px;
+  border-radius: 8px;
+  background: rgba(217, 217, 217, 0.2);
+  overflow: hidden;
+}
+
+.story-progress__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  height: 100%;
+  border-radius: 8px;
+  background: #d9d9d9;
+}
+
 @media (max-width: 768px) {
   .chrome-logo {
     left: 24px;
@@ -143,6 +177,11 @@
 
   .chrome-cta {
     bottom: 24px;
+  }
+
+  .story-progress {
+    bottom: 76px;
+    width: 120px;
   }
 
   .cta-pill {

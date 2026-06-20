@@ -47,6 +47,16 @@ function fadeOpacity(traveled, distance, target) {
   return target * eased;
 }
 
+function smoothstep(t) {
+  const clamped = Math.max(0, Math.min(1, t));
+  return clamped * clamped * (3 - 2 * clamped);
+}
+
+function spreadAlongPath(z, spawnZ, spreadEndZ) {
+  const range = Math.max(0.5, spreadEndZ - spawnZ);
+  return smoothstep((z - spawnZ) / range);
+}
+
 function resolveDepthScale(entry, manifest) {
   const depth = entry.size?.depthScale ?? entry.depthScale ?? {};
   const defaults = manifest.settings?.depthScale ?? ASSET_FIELD.depthScale;
@@ -131,7 +141,7 @@ function anchorToWorld(anchor, lane) {
   return { x: x * 9, y: y * 5.5 };
 }
 
-function pickSpawnXY(lane, anchor) {
+function pickHomeXY(lane, anchor) {
   const bounds = LANE_BOUNDS[lane] ?? LANE_BOUNDS.free;
   let x = randIn(bounds.x);
   let y = randIn(bounds.y);
@@ -266,29 +276,28 @@ export class AssetField {
     const mesh = new THREE.Mesh(geo, mat);
     const motion = entry.motion || {};
     const lane = entry.layout?.lane ?? "free";
+    const tunnel = this.tunnelSettings();
     const stagger = (instanceIndex / Math.max(1, instanceCount)) * STREAM_DEPTH;
     const z = Z_SPAWN + stagger + Math.random() * 4;
 
-    let { x, y } = pickSpawnXY(lane, entry.layout?.anchor);
-    const halfW = width / 18;
-    const halfH = height / 11;
-    const nudged = nudgeFromSafeZone(
-      x,
-      y,
-      halfW,
-      halfH,
-      this.camera,
-      this.container.clientWidth,
-      this.container.clientHeight
-    );
-    x = nudged.x;
-    y = nudged.y;
-
+    const home = this.resolveHomePosition(entry, lane, width, height);
+    const origin = this.originJitter(instanceIndex, tunnel);
     const baseRot = THREE.MathUtils.degToRad(entry.layout?.rotation ?? 0);
     const depthScale = resolveDepthScale(entry, this.manifest);
     const spawnScale = depthScaleAlongPath(z, z, depthScale.spawn, depthScale.front);
+    const start = this.positionAlongTunnel(
+      {
+        spawnZ: z,
+        spreadEndZ: tunnel.spreadEndZ,
+        originX: origin.x,
+        originY: origin.y,
+        homeX: home.x,
+        homeY: home.y,
+      },
+      z
+    );
 
-    mesh.position.set(x, y, z);
+    mesh.position.set(start.x, start.y, z);
     mesh.rotation.z = baseRot;
     mesh.scale.setScalar(spawnScale);
     mesh.renderOrder = 0;
@@ -301,8 +310,11 @@ export class AssetField {
       lane,
       anchor: entry.layout?.anchor,
       baseRot,
-      baseX: x,
-      baseY: y,
+      originX: origin.x,
+      originY: origin.y,
+      homeX: home.x,
+      homeY: home.y,
+      spreadEndZ: tunnel.spreadEndZ,
       z,
       spawnZ: z,
       scaleSpawn: depthScale.spawn,
@@ -311,7 +323,7 @@ export class AssetField {
       phase: Math.random() * Math.PI * 2,
       lag: 0.06 + Math.random() * 0.05,
     };
-    mesh.userData.display = { x, y, z, rot: baseRot };
+    mesh.userData.display = { x: start.x, y: start.y, z, rot: baseRot };
 
     this.scene.add(mesh);
     this.items.push(mesh);
@@ -321,28 +333,19 @@ export class AssetField {
     const m = mesh.userData.motion;
     const d = mesh.userData.display;
     const entry = mesh.userData.entry;
-    const halfW = mesh.geometry.parameters.width / 18;
-    const halfH = mesh.geometry.parameters.height / 11;
+    const width = mesh.geometry.parameters.width;
+    const height = mesh.geometry.parameters.height;
 
-    let { x, y } = pickSpawnXY(m.lane, m.anchor);
-    const nudged = nudgeFromSafeZone(
-      x,
-      y,
-      halfW,
-      halfH,
-      this.camera,
-      this.container.clientWidth,
-      this.container.clientHeight
-    );
-
-    m.baseX = nudged.x;
-    m.baseY = nudged.y;
+    const home = this.resolveHomePosition(entry, m.lane, width, height);
+    m.homeX = home.x;
+    m.homeY = home.y;
     m.z = Z_SPAWN - Math.random() * 6;
     m.spawnZ = m.z;
     m.baseRot = m.baseRot + (Math.random() - 0.5) * 0.08;
 
-    d.x = m.baseX;
-    d.y = m.baseY;
+    const start = this.positionAlongTunnel(m, m.z);
+    d.x = start.x;
+    d.y = start.y;
     d.z = m.z;
     d.rot = m.baseRot;
 
@@ -354,6 +357,51 @@ export class AssetField {
 
   spawnFadeDistance() {
     return this.manifest.settings?.spawnFadeDistance ?? ASSET_FIELD.spawnFadeDistance;
+  }
+
+  tunnelSettings() {
+    const settings = this.manifest.settings ?? {};
+    return {
+      vanishX: settings.vanishingPoint?.x ?? ASSET_FIELD.vanishingPoint.x,
+      vanishY: settings.vanishingPoint?.y ?? ASSET_FIELD.vanishingPoint.y,
+      vanishJitter: settings.vanishJitter ?? ASSET_FIELD.vanishJitter,
+      spreadEndZ: settings.spreadEndZ ?? ASSET_FIELD.spreadEndZ,
+    };
+  }
+
+  resolveHomePosition(entry, lane, width, height) {
+    let { x, y } = pickHomeXY(lane, entry.layout?.anchor);
+    const halfW = width / 18;
+    const halfH = height / 11;
+    const nudged = nudgeFromSafeZone(
+      x,
+      y,
+      halfW,
+      halfH,
+      this.camera,
+      this.container.clientWidth,
+      this.container.clientHeight
+    );
+    return nudged;
+  }
+
+  originJitter(instanceIndex, tunnel) {
+    const jitter = tunnel.vanishJitter;
+    return {
+      x: tunnel.vanishX + (hash01(instanceIndex * 3.17) - 0.5) * jitter,
+      y: tunnel.vanishY + (hash01(instanceIndex * 5.91) - 0.5) * jitter * 0.75,
+    };
+  }
+
+  positionAlongTunnel(m, z) {
+    const spread = spreadAlongPath(z, m.spawnZ, m.spreadEndZ);
+    const swayMul = lerp(0.12, 1, spread);
+    return {
+      spread,
+      swayMul,
+      x: lerp(m.originX, m.homeX, spread),
+      y: lerp(m.originY, m.homeY, spread),
+    };
   }
 
   onPointerMove(event) {
@@ -414,8 +462,11 @@ export class AssetField {
         continue;
       }
 
-      const targetX = m.baseX + Math.sin(t * m.sway.freq + m.phase) * m.sway.amp * 6;
-      const targetY = m.baseY + Math.cos(t * m.sway.freq * 0.85 + m.phase) * m.sway.amp * 4.5;
+      const tunnelPos = this.positionAlongTunnel(m, m.z);
+      const targetX =
+        tunnelPos.x + Math.sin(t * m.sway.freq + m.phase) * m.sway.amp * 6 * tunnelPos.swayMul;
+      const targetY =
+        tunnelPos.y + Math.cos(t * m.sway.freq * 0.85 + m.phase) * m.sway.amp * 4.5 * tunnelPos.swayMul;
       const targetZ = m.z;
       const targetRot = m.baseRot + Math.sin(t * 0.15 + m.phase) * 0.04;
 

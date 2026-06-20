@@ -16,7 +16,9 @@ export const SCROLL = {
   transitionDuration: 0.55,
   transitionMinDuration: 0.28,
   transitionKick: 0.22,
-  stepCooldown: 380,
+  wheelThreshold: 30,
+  wheelAccumDecayMs: 70,
+  momentumGuardMs: 220,
   swipeThreshold: 48,
 };
 
@@ -45,4 +47,7 @@ export const ASSET_FIELD = {
     spawn: 0.1,
     front: 1.35,
   },
+  vanishingPoint: { x: 0, y: 0 },
+  vanishJitter: 0.45,
+  spreadEndZ: -2.5,
 };

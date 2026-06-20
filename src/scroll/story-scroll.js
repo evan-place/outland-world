@@ -3,11 +3,13 @@ import { SCROLL } from "../config.js";
 
 function easeTransition(t) {
   const clamped = Math.max(0, Math.min(1, t));
-  return clamped * clamped * (3 - 2 * clamped);
+  return clamped * clamped * (3 - 2 * t);
 }
 
 export function initStoryScroll({ beats, onBeatChange }) {
   const a11y = document.getElementById("story-a11y");
+  const progressEl = document.getElementById("story-progress");
+  const progressFill = progressEl?.querySelector(".story-progress__fill");
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const beatCount = beats.length;
 
@@ -15,7 +17,25 @@ export function initStoryScroll({ beats, onBeatChange }) {
   let phase = "settled";
   let transitionTween = null;
   let touchStartY = null;
-  let cooldownTimer = null;
+  let wheelAccum = 0;
+  let lastWheelAt = 0;
+  let nextStepAllowedAt = 0;
+  let hasEngaged = false;
+
+  const updateProgress = (from, t) => {
+    if (!progressFill) return;
+    const max = Math.max(1, beatCount - 1);
+    const value = Math.max(0, Math.min(1, (from + t) / max));
+    progressFill.style.width = `${value * 100}%`;
+  };
+
+  const engageProgress = () => {
+    if (hasEngaged || !progressEl) return;
+    hasEngaged = true;
+    progressEl.hidden = false;
+    progressEl.setAttribute("aria-hidden", "false");
+    progressEl.classList.add("story-progress--visible");
+  };
 
   const applyState = (from, t) => {
     const eased = easeTransition(t);
@@ -23,26 +43,23 @@ export function initStoryScroll({ beats, onBeatChange }) {
       eased < 0.02 ? from : eased > 0.98 ? Math.min(beatCount - 1, from + 1) : from;
 
     a11y.innerHTML = beats[settledBeat].html.replace(/<[^>]+>/g, "");
+    updateProgress(from, eased);
     onBeatChange?.(from, eased);
   };
 
   const settleAt = (beat) => {
     currentBeat = beat;
+    phase = "settled";
     applyState(beat, 0);
   };
 
-  const startCooldown = () => {
-    phase = "cooldown";
-    clearTimeout(cooldownTimer);
-    cooldownTimer = window.setTimeout(() => {
-      phase = "settled";
-      cooldownTimer = null;
-    }, SCROLL.stepCooldown);
+  const armNextStep = () => {
+    nextStepAllowedAt = performance.now() + SCROLL.momentumGuardMs;
+    wheelAccum = 0;
   };
 
-  const extendCooldown = () => {
-    if (phase !== "cooldown") return;
-    startCooldown();
+  const canAcceptStep = () => {
+    return phase === "settled" && performance.now() >= nextStepAllowedAt;
   };
 
   const completeTransition = (fromBeat, targetBeat, startT, endT) => {
@@ -65,16 +82,20 @@ export function initStoryScroll({ beats, onBeatChange }) {
       onComplete: () => {
         transitionTween = null;
         settleAt(targetBeat);
-        startCooldown();
+        armNextStep();
       },
     });
   };
 
   const beginTransition = (direction) => {
-    if (phase !== "settled") return;
+    if (!canAcceptStep()) return;
 
     const target = currentBeat + direction;
     if (target < 0 || target >= beatCount) return;
+
+    engageProgress();
+    wheelAccum = 0;
+    nextStepAllowedAt = Number.POSITIVE_INFINITY;
 
     const goingForward = direction > 0;
     const fromBeat = goingForward ? currentBeat : target;
@@ -89,26 +110,35 @@ export function initStoryScroll({ beats, onBeatChange }) {
   const onWheel = (event) => {
     event.preventDefault();
 
-    if (phase === "cooldown") {
-      extendCooldown();
+    const now = performance.now();
+
+    if (phase === "transitioning" || now < nextStepAllowedAt) {
+      wheelAccum = 0;
       return;
     }
 
     if (phase !== "settled") return;
 
-    const direction = event.deltaY > 0 ? 1 : event.deltaY < 0 ? -1 : 0;
-    if (!direction) return;
+    if (lastWheelAt && now - lastWheelAt > SCROLL.wheelAccumDecayMs) {
+      wheelAccum = 0;
+    }
+    lastWheelAt = now;
 
+    wheelAccum += event.deltaY;
+    if (Math.abs(wheelAccum) < SCROLL.wheelThreshold) return;
+
+    const direction = wheelAccum > 0 ? 1 : -1;
+    wheelAccum = 0;
     beginTransition(direction);
   };
 
   const onTouchStart = (event) => {
-    if (phase !== "settled") return;
+    if (!canAcceptStep()) return;
     touchStartY = event.touches[0]?.clientY ?? null;
   };
 
   const onTouchEnd = (event) => {
-    if (touchStartY === null || phase !== "settled") return;
+    if (touchStartY === null || !canAcceptStep()) return;
 
     const endY = event.changedTouches[0]?.clientY;
     if (endY == null) return;
@@ -121,7 +151,7 @@ export function initStoryScroll({ beats, onBeatChange }) {
   };
 
   const onKeyDown = (event) => {
-    if (phase !== "settled") return;
+    if (!canAcceptStep()) return;
 
     if (event.key === "ArrowDown" || event.key === "PageDown" || event.key === " ") {
       event.preventDefault();
@@ -142,12 +172,11 @@ export function initStoryScroll({ beats, onBeatChange }) {
   return {
     getCurrentBeat: () => currentBeat,
     goToBeat: (index) => {
-      if (phase !== "settled" || index === currentBeat) return;
+      if (!canAcceptStep() || index === currentBeat) return;
       beginTransition(index > currentBeat ? 1 : -1);
     },
     destroy() {
       transitionTween?.kill();
-      clearTimeout(cooldownTimer);
       document.removeEventListener("wheel", onWheel, { capture: true });
       window.removeEventListener("touchstart", onTouchStart);
       window.removeEventListener("touchend", onTouchEnd);
