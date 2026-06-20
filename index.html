@@ -10,12 +10,15 @@
     <link rel="stylesheet" href="/src/styles/chrome.css" />
     <link rel="stylesheet" href="/src/styles/main.css" />
   </head>
-  <body>
+  <body tabindex="-1">
     <div id="app">
       <div id="webgl-root" aria-hidden="true"></div>
 
       <div id="story-layer">
-        <canvas id="story-canvas" aria-hidden="true"></canvas>
+        <div class="story-text-stack">
+          <p id="story-text-a" class="story-text story-text--serif-lg" aria-live="polite"></p>
+          <p id="story-text-b" class="story-text story-text--serif-lg" aria-hidden="true"></p>
+        </div>
         <div id="story-a11y" class="visually-hidden" aria-live="polite"></div>
       </div>
 
@@ -44,8 +47,6 @@
         <button type="button" class="cta-pill">Lets Build</button>
         <img class="cta-wave" src="/assets/waveform-icon.png" alt="" width="51" height="43" />
       </footer>
-
-      <div id="scroll-track" aria-hidden="true"></div>
     </div>
     <script type="module" src="/src/main.js"></script>
   </body>

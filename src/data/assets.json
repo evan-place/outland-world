@@ -1,5 +1,11 @@
 {
   "settings": {
+    "instancesPerAsset": 2,
+    "spawnFadeDistance": 7,
+    "depthScale": {
+      "spawn": 0.1,
+      "front": 1.35
+    },
     "safeZone": {
       "width": 514,
       "heightRatio": 0.4
@@ -12,31 +18,85 @@
       "alt": "Terrain scan",
       "blendMode": "screen",
       "hoverable": true,
-      "opacity": 0.95,
-      "size": { "maxWidth": 420, "maxHeight": 380, "scale": 1.1 },
-      "layout": { "lane": "left", "anchor": { "x": 0.16, "y": 0.48 }, "rotation": 90 },
-      "motion": { "path": "drift", "speed": 0.28, "zRange": [-14, 5], "sway": { "amp": 0.05, "freq": 0.18 }, "rotSpeed": 0.04 }
+      "opacity": 0.87,
+      "instances": 2,
+      "size": {
+        "maxWidth": 455,
+        "maxHeight": 392,
+        "scale": 1,
+        "scaleJitter": 0.12,
+        "depthScale": { "spawn": 0.12, "front": 1.45 }
+      },
+      "layout": { "lane": "left", "anchor": { "x": 0.08, "y": 0.48 }, "rotation": 90 },
+      "motion": { "speed": 0.28, "sway": { "amp": 0.05, "freq": 0.18 }, "rotSpeed": 0.04 }
     },
     {
       "id": "world-builders-logo",
       "src": "/assets/world-builders-text-1.png",
       "alt": "New World Builders",
-      "blendMode": "exclusion",
+      "blendMode": "normal",
       "hoverable": true,
-      "size": { "maxWidth": 300, "scale": 1.1 },
-      "layout": { "lane": "top-left", "anchor": { "x": 0.28, "y": 0.26 }, "rotation": 4.4 },
-      "motion": { "path": "drift", "speed": 0.22, "zRange": [-10, 4], "sway": { "amp": 0.03, "freq": 0.25 }, "rotSpeed": 0.06 }
+      "opacity": 1,
+      "instances": 2,
+      "size": {
+        "maxWidth": 300,
+        "scale": 0.9,
+        "scaleJitter": 0.15,
+        "depthScale": { "spawn": 0.28, "front": 0.58 }
+      },
+      "layout": { "lane": "top-left", "anchor": { "x": 0.12, "y": 0.34 }, "rotation": 4.4 },
+      "motion": { "speed": 0.22, "sway": { "amp": 0.03, "freq": 0.25 }, "rotSpeed": 0.06 }
+    },
+    {
+      "id": "world-builders-logo-2",
+      "src": "/assets/world-builders-text-2.png",
+      "alt": "New World Builders accent",
+      "blendMode": "normal",
+      "hoverable": true,
+      "opacity": 1,
+      "instances": 2,
+      "size": {
+        "maxWidth": 200,
+        "scale": 0.85,
+        "scaleJitter": 0.18,
+        "depthScale": { "spawn": 0.3, "front": 0.52 }
+      },
+      "layout": { "lane": "top-left", "anchor": { "x": 0.1, "y": 0.3 }, "rotation": 4.4 },
+      "motion": { "speed": 0.2, "sway": { "amp": 0.025, "freq": 0.28 }, "rotSpeed": 0.05 }
+    },
+    {
+      "id": "world-builders-logo-3",
+      "src": "/assets/world-builders-text-3.png",
+      "alt": "New World Builders mark",
+      "blendMode": "normal",
+      "hoverable": true,
+      "opacity": 0.95,
+      "instances": 2,
+      "size": {
+        "maxWidth": 160,
+        "scale": 0.8,
+        "scaleJitter": 0.15,
+        "depthScale": { "spawn": 0.32, "front": 0.48 }
+      },
+      "layout": { "lane": "top-left", "anchor": { "x": 0.16, "y": 0.4 }, "rotation": 4.4 },
+      "motion": { "speed": 0.18, "sway": { "amp": 0.03, "freq": 0.3 }, "rotSpeed": 0.07 }
     },
     {
       "id": "world-builders-accent",
       "src": "/assets/world-builders.png",
       "alt": "World builders graphic",
-      "blendMode": "exclusion",
+      "blendMode": "normal",
       "hoverable": true,
-      "opacity": 0.9,
-      "size": { "maxWidth": 340, "scale": 0.95 },
-      "layout": { "lane": "top-right", "anchor": { "x": 0.9, "y": 0.06 }, "rotation": 180 },
-      "motion": { "path": "drift", "speed": 0.32, "zRange": [-12, 6], "sway": { "amp": 0.04, "freq": 0.2 }, "rotSpeed": 0.05 }
+      "opacity": 0.95,
+      "instances": 2,
+      "size": {
+        "maxWidth": 358,
+        "scale": 1,
+        "scaleJitter": 0.1,
+        "depthScale": { "spawn": 0.14, "front": 1.25 }
+      },
+      "layout": { "lane": "top-right", "anchor": { "x": 0.92, "y": 0.04 }, "rotation": 180 },
+      "motion": { "speed": 0.32, "sway": { "amp": 0.04, "freq": 0.2 }, "rotSpeed": 0.05 }
     },
     {
       "id": "world-motion",
@@ -44,9 +104,16 @@
       "alt": "World of Motion",
       "blendMode": "screen",
       "hoverable": true,
-      "size": { "maxWidth": 300, "scale": 1.05 },
-      "layout": { "lane": "top-right", "anchor": { "x": 0.7, "y": 0.1 }, "rotation": 13.17 },
-      "motion": { "path": "drift", "speed": 0.26, "zRange": [-11, 5], "sway": { "amp": 0.035, "freq": 0.22 }, "rotSpeed": 0.07 }
+      "opacity": 1,
+      "instances": 2,
+      "size": {
+        "maxWidth": 292,
+        "scale": 0.95,
+        "scaleJitter": 0.12,
+        "depthScale": { "spawn": 0.22, "front": 0.68 }
+      },
+      "layout": { "lane": "top-right", "anchor": { "x": 0.68, "y": 0.08 }, "rotation": 13.17 },
+      "motion": { "speed": 0.26, "sway": { "amp": 0.035, "freq": 0.22 }, "rotSpeed": 0.07 }
     },
     {
       "id": "orbit-graphic",
@@ -54,10 +121,16 @@
       "alt": "Orbit diagram",
       "blendMode": "color-dodge",
       "hoverable": true,
-      "opacity": 0.85,
-      "size": { "maxWidth": 440, "scale": 1 },
-      "layout": { "lane": "right", "anchor": { "x": 0.9, "y": 0.52 }, "rotation": 0 },
-      "motion": { "path": "drift", "speed": 0.3, "zRange": [-13, 4], "sway": { "amp": 0.045, "freq": 0.19 }, "rotSpeed": 0.03 }
+      "opacity": 0.92,
+      "instances": 2,
+      "size": {
+        "maxWidth": 464,
+        "scale": 1,
+        "scaleJitter": 0.1,
+        "depthScale": { "spawn": 0.09, "front": 1.6 }
+      },
+      "layout": { "lane": "right", "anchor": { "x": 0.88, "y": 0.58 }, "rotation": 0 },
+      "motion": { "speed": 0.3, "sway": { "amp": 0.045, "freq": 0.19 }, "rotSpeed": 0.03 }
     },
     {
       "id": "galaxy",
@@ -65,22 +138,35 @@
       "alt": "Galaxy",
       "blendMode": "lighten",
       "hoverable": true,
-      "opacity": 0.9,
-      "size": { "maxWidth": 560, "scale": 0.85 },
-      "layout": { "lane": "bottom-left", "anchor": { "x": 0.14, "y": 0.78 }, "rotation": -123.39 },
-      "motion": { "path": "drift", "speed": 0.24, "zRange": [-15, 5], "sway": { "amp": 0.05, "freq": 0.16 }, "rotSpeed": 0.02 }
+      "opacity": 0.88,
+      "instances": 2,
+      "size": {
+        "maxWidth": 834,
+        "scale": 0.95,
+        "scaleJitter": 0.08,
+        "depthScale": { "spawn": 0.07, "front": 2.05 }
+      },
+      "layout": { "lane": "bottom-left", "anchor": { "x": 0.12, "y": 0.82 }, "rotation": -123.39 },
+      "motion": { "speed": 0.24, "sway": { "amp": 0.05, "freq": 0.16 }, "rotSpeed": 0.02 }
     },
     {
       "id": "paper-dept",
       "src": "/assets/paper-dept.png",
       "alt": "Dept. of Imagination form",
-      "blendMode": "screen",
+      "blendMode": "normal",
       "hoverable": true,
-      "opacity": 0.95,
-      "size": { "maxWidth": 460, "maxHeight": 560, "scale": 0.62 },
-      "sizeMobile": { "maxWidth": 220, "scale": 0.5 },
-      "layout": { "lane": "bottom-right", "anchor": { "x": 0.78, "y": 0.88 }, "rotation": 5.86 },
-      "motion": { "path": "drift", "speed": 0.2, "zRange": [-16, 6], "sway": { "amp": 0.04, "freq": 0.15 }, "rotSpeed": 0.04 }
+      "opacity": 1,
+      "instances": 2,
+      "size": {
+        "maxWidth": 822,
+        "maxHeight": 1060,
+        "scale": 0.92,
+        "scaleJitter": 0.06,
+        "depthScale": { "spawn": 0.06, "front": 2.15 }
+      },
+      "sizeMobile": { "maxWidth": 220, "scale": 0.45, "depthScale": { "spawn": 0.12, "front": 1.2 } },
+      "layout": { "lane": "bottom-right", "anchor": { "x": 0.82, "y": 0.92 }, "rotation": 5.86 },
+      "motion": { "speed": 0.2, "sway": { "amp": 0.04, "freq": 0.15 }, "rotSpeed": 0.04 }
     }
   ]
 }

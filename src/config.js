@@ -13,9 +13,18 @@ export const STYLE_PRESETS = {
 };
 
 export const SCROLL = {
-  holdRatio: 0.7,
-  transitionRatio: 0.3,
-  snapDuration: 0.6,
+  transitionDuration: 0.55,
+  transitionMinDuration: 0.28,
+  transitionKick: 0.22,
+  stepCooldown: 380,
+  swipeThreshold: 48,
+};
+
+/** Reserved for future CRT / warp transitions */
+export const STORY_TRANSITION = {
+  easePower: 1.35,
+  mixEdgeLow: 0.08,
+  mixEdgeHigh: 0.92,
 };
 
 export const HOVER = {
@@ -28,4 +37,12 @@ export const HOVER = {
 export const SAFE_ZONE = {
   width: 514,
   heightRatio: 0.4,
+};
+
+export const ASSET_FIELD = {
+  spawnFadeDistance: 7,
+  depthScale: {
+    spawn: 0.1,
+    front: 1.35,
+  },
 };

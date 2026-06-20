@@ -1,5 +1,11 @@
 import * as THREE from "three";
-import { SIZE_CLASS_PRESETS, HOVER, SAFE_ZONE } from "../config.js";
+import { SIZE_CLASS_PRESETS, HOVER, SAFE_ZONE, ASSET_FIELD } from "../config.js";
+
+/** Assets drift toward the camera (+Z) and respawn far behind only once off-screen. */
+const Z_SPAWN = -26;
+const Z_DESPAWN = 9;
+const STREAM_DEPTH = Z_DESPAWN - Z_SPAWN;
+const DEFAULT_INSTANCES_PER_ASSET = 2;
 
 const BLEND_MAP = {
   normal: () => ({ blending: THREE.NormalBlending, transparent: true }),
@@ -10,11 +16,54 @@ const BLEND_MAP = {
   exclusion: () => ({ blending: THREE.NormalBlending, transparent: true }),
 };
 
+const LANE_BOUNDS = {
+  "top-left": { x: [-10, -4], y: [1.5, 5] },
+  "top-right": { x: [4, 10], y: [1.5, 5] },
+  "bottom-left": { x: [-10, -4], y: [-5, -1.5] },
+  "bottom-right": { x: [4, 10], y: [-5, -1.5] },
+  left: { x: [-11, -6], y: [-3, 3] },
+  right: { x: [6, 11], y: [-3, 3] },
+  top: { x: [-4, 4], y: [3.5, 6] },
+  bottom: { x: [-4, 4], y: [-6, -3.5] },
+  free: { x: [-11, 11], y: [-6, 6] },
+};
+
 function lerp(a, b, t) {
   return a + (b - a) * t;
 }
 
-function resolveSize(entry, texW, texH, isMobile) {
+function randIn([min, max]) {
+  return min + Math.random() * (max - min);
+}
+
+function hash01(seed) {
+  const x = Math.sin(seed * 127.1 + 311.7) * 43758.5453;
+  return x - Math.floor(x);
+}
+
+function fadeOpacity(traveled, distance, target) {
+  const t = Math.max(0, Math.min(1, traveled / distance));
+  const eased = t * t * (3 - 2 * t);
+  return target * eased;
+}
+
+function resolveDepthScale(entry, manifest) {
+  const depth = entry.size?.depthScale ?? entry.depthScale ?? {};
+  const defaults = manifest.settings?.depthScale ?? ASSET_FIELD.depthScale;
+  return {
+    spawn: depth.spawn ?? defaults.spawn ?? 0.1,
+    front: depth.front ?? defaults.front ?? 1.35,
+  };
+}
+
+function depthScaleAlongPath(z, spawnZ, scaleSpawn, scaleFront) {
+  const range = Math.max(1, Z_DESPAWN - spawnZ - 2);
+  const t = Math.max(0, Math.min(1, (z - spawnZ) / range));
+  const eased = t * t * (3 - 2 * t);
+  return lerp(scaleSpawn, scaleFront, eased);
+}
+
+function resolveSize(entry, texW, texH, isMobile, instanceIndex = 0) {
   const size = { ...(entry.size || {}) };
   if (entry.sizeClass && SIZE_CLASS_PRESETS[entry.sizeClass]) {
     Object.assign(size, SIZE_CLASS_PRESETS[entry.sizeClass]);
@@ -23,7 +72,15 @@ function resolveSize(entry, texW, texH, isMobile) {
     Object.assign(size, entry.sizeMobile);
   }
 
-  const scale = size.scale ?? 1;
+  let scale = size.scale ?? 1;
+  const jitter = size.scaleJitter ?? entry.scaleJitter ?? 0;
+
+  if (size.scaleMin != null && size.scaleMax != null) {
+    scale = lerp(size.scaleMin, size.scaleMax, hash01(instanceIndex + 1.7));
+  } else if (jitter > 0) {
+    scale *= 1 + (hash01(instanceIndex + 2.3) * 2 - 1) * jitter;
+  }
+
   let w = size.width ?? null;
   let h = size.height ?? null;
   const aspect = texW / texH;
@@ -74,6 +131,20 @@ function anchorToWorld(anchor, lane) {
   return { x: x * 9, y: y * 5.5 };
 }
 
+function pickSpawnXY(lane, anchor) {
+  const bounds = LANE_BOUNDS[lane] ?? LANE_BOUNDS.free;
+  let x = randIn(bounds.x);
+  let y = randIn(bounds.y);
+
+  if (anchor) {
+    const hint = anchorToWorld(anchor, lane);
+    x = lerp(x, hint.x, 0.35);
+    y = lerp(y, hint.y, 0.35);
+  }
+
+  return { x, y };
+}
+
 function overlapsSafeZone(x, y, halfW, halfH, camera, width, height) {
   const v = new THREE.Vector3(x, y, 0);
   v.project(camera);
@@ -83,13 +154,25 @@ function overlapsSafeZone(x, y, halfW, halfH, camera, width, height) {
   const safeH = height * SAFE_ZONE.heightRatio;
   const cx = width / 2;
   const cy = height / 2;
-  const pad = 24;
+  const pad = 40;
   return (
     sx + halfW * width > cx - safeW / 2 - pad &&
     sx - halfW * width < cx + safeW / 2 + pad &&
     sy + halfH * height > cy - safeH / 2 - pad &&
     sy - halfH * height < cy + safeH / 2 + pad
   );
+}
+
+function nudgeFromSafeZone(x, y, halfW, halfH, camera, width, height) {
+  let px = x;
+  let py = y;
+  let guard = 0;
+  while (overlapsSafeZone(px, py, halfW, halfH, camera, width, height) && guard < 16) {
+    px += px > 0 ? 0.55 : -0.55;
+    py += py > 0 ? 0.45 : -0.45;
+    guard++;
+  }
+  return { x: px, y: py };
 }
 
 export class AssetField {
@@ -100,19 +183,20 @@ export class AssetField {
     this.globalSpeed = 1;
     this.targetSpeed = 1;
     this.hoverDwell = 0;
-    this.isHoveringAsset = false;
-    this.pointer = new THREE.Vector2();
+    this.pointer = new THREE.Vector2(-9, -9);
     this.raycaster = new THREE.Raycaster();
     this.clock = new THREE.Clock();
     this.reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    this.loadErrors = [];
 
     this.scene = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+    this.camera = new THREE.PerspectiveCamera(48, 1, 0.1, 80);
     this.camera.position.set(0, 0, 14);
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.setClearColor(0x1d1c1a, 1);
+    this.renderer.sortObjects = true;
     container.appendChild(this.renderer.domElement);
 
     this._onResize = () => this.resize();
@@ -124,73 +208,152 @@ export class AssetField {
     window.addEventListener("pointerleave", this._onPointerLeave);
 
     this.resize();
-    this.load();
+    this.loadPromise = this.load();
   }
 
   async load() {
     const loader = new THREE.TextureLoader();
     const isMobile = window.innerWidth < 768;
     const assets = (this.manifest.assets || []).filter((a) => a.enabled !== false);
+    const defaultInstances =
+      this.manifest.settings?.instancesPerAsset ?? DEFAULT_INSTANCES_PER_ASSET;
 
-    for (const entry of assets) {
-      const tex = await loader.loadAsync(entry.src);
-      tex.colorSpace = THREE.SRGBColorSpace;
-      const { width, height } = resolveSize(entry, tex.image.width, tex.image.height, isMobile);
-      const geo = new THREE.PlaneGeometry(width, height);
-      const blend = BLEND_MAP[entry.blendMode]?.() ?? BLEND_MAP.normal();
-      const mat = new THREE.MeshBasicMaterial({
-        map: tex,
-        transparent: blend.transparent,
-        blending: blend.blending,
-        opacity: entry.opacity ?? 1,
-        depthWrite: false,
-      });
-      const mesh = new THREE.Mesh(geo, mat);
-      const world = anchorToWorld(entry.layout?.anchor, entry.layout?.lane);
-      const motion = entry.motion || {};
-      const zMin = motion.zRange?.[0] ?? -12;
-      const zMax = motion.zRange?.[1] ?? 6;
-      const zMid = zMin + Math.random() * (zMax - zMin);
+    await Promise.all(
+      assets.map(async (entry) => {
+        try {
+          const tex = await loader.loadAsync(entry.src);
+          tex.colorSpace = THREE.SRGBColorSpace;
 
-      mesh.position.set(world.x, world.y, zMid);
-      mesh.rotation.z = THREE.MathUtils.degToRad(entry.layout?.rotation ?? 0);
-      mesh.userData.entry = entry;
-      mesh.userData.motion = {
-        path: motion.path ?? "drift",
-        speed: motion.speed ?? 0.3,
-        zRange: motion.zRange ?? [-12, 6],
-        sway: motion.sway ?? { amp: 0.04, freq: 0.2 },
-        rotSpeed: motion.rotSpeed ?? 0.05,
-        baseX: world.x,
-        baseY: world.y,
-        z: zMid,
-        phase: Math.random() * Math.PI * 2,
-        lag: 0.08 + Math.random() * 0.06,
-      };
-      mesh.userData.display = { x: world.x, y: world.y, z: zMid, rot: mesh.rotation.z };
+          const instanceCount = entry.instances ?? defaultInstances;
+          for (let i = 0; i < instanceCount; i++) {
+            this.spawnInstance(entry, tex, isMobile, i, instanceCount);
+          }
+        } catch (err) {
+          console.error(`[AssetField] Failed to load: ${entry.id} (${entry.src})`, err);
+          this.loadErrors.push(entry.id);
+        }
+      })
+    );
 
-      this.nudgeFromSafeZone(mesh);
-      this.scene.add(mesh);
-      this.items.push(mesh);
+    if (this.loadErrors.length) {
+      console.warn("[AssetField] Missing assets:", this.loadErrors.join(", "));
     }
   }
 
-  nudgeFromSafeZone(mesh) {
-    const w = this.container.clientWidth;
-    const h = this.container.clientHeight;
+  spawnInstance(entry, tex, isMobile, instanceIndex, instanceCount) {
+    const { width, height } = resolveSize(
+      entry,
+      tex.image.width,
+      tex.image.height,
+      isMobile,
+      instanceIndex
+    );
+    const geo = new THREE.PlaneGeometry(width, height);
+    const blend = BLEND_MAP[entry.blendMode]?.() ?? BLEND_MAP.normal();
+    const useNormalBlend = entry.blendMode === "exclusion" || entry.blendMode === "normal";
+    const targetOpacity = entry.opacity ?? (useNormalBlend ? 1 : 0.92);
+
+    const mat = new THREE.MeshBasicMaterial({
+      map: tex,
+      transparent: true,
+      blending: blend.blending,
+      opacity: 0,
+      depthWrite: false,
+      depthTest: true,
+      side: THREE.DoubleSide,
+    });
+
+    const mesh = new THREE.Mesh(geo, mat);
+    const motion = entry.motion || {};
+    const lane = entry.layout?.lane ?? "free";
+    const stagger = (instanceIndex / Math.max(1, instanceCount)) * STREAM_DEPTH;
+    const z = Z_SPAWN + stagger + Math.random() * 4;
+
+    let { x, y } = pickSpawnXY(lane, entry.layout?.anchor);
+    const halfW = width / 18;
+    const halfH = height / 11;
+    const nudged = nudgeFromSafeZone(
+      x,
+      y,
+      halfW,
+      halfH,
+      this.camera,
+      this.container.clientWidth,
+      this.container.clientHeight
+    );
+    x = nudged.x;
+    y = nudged.y;
+
+    const baseRot = THREE.MathUtils.degToRad(entry.layout?.rotation ?? 0);
+    const depthScale = resolveDepthScale(entry, this.manifest);
+    const spawnScale = depthScaleAlongPath(z, z, depthScale.spawn, depthScale.front);
+
+    mesh.position.set(x, y, z);
+    mesh.rotation.z = baseRot;
+    mesh.scale.setScalar(spawnScale);
+    mesh.renderOrder = 0;
+
+    mesh.userData.entry = entry;
+    mesh.userData.motion = {
+      speed: motion.speed ?? 0.28,
+      sway: motion.sway ?? { amp: 0.04, freq: 0.2 },
+      rotSpeed: motion.rotSpeed ?? 0.04,
+      lane,
+      anchor: entry.layout?.anchor,
+      baseRot,
+      baseX: x,
+      baseY: y,
+      z,
+      spawnZ: z,
+      scaleSpawn: depthScale.spawn,
+      scaleFront: depthScale.front,
+      targetOpacity,
+      phase: Math.random() * Math.PI * 2,
+      lag: 0.06 + Math.random() * 0.05,
+    };
+    mesh.userData.display = { x, y, z, rot: baseRot };
+
+    this.scene.add(mesh);
+    this.items.push(mesh);
+  }
+
+  respawnStream(mesh) {
+    const m = mesh.userData.motion;
+    const d = mesh.userData.display;
+    const entry = mesh.userData.entry;
     const halfW = mesh.geometry.parameters.width / 18;
     const halfH = mesh.geometry.parameters.height / 11;
-    let guard = 0;
-    while (
-      overlapsSafeZone(mesh.position.x, mesh.position.y, halfW, halfH, this.camera, w, h) &&
-      guard < 12
-    ) {
-      mesh.position.x += mesh.position.x > 0 ? 0.4 : -0.4;
-      mesh.position.y += mesh.position.y > 0 ? 0.3 : -0.3;
-      mesh.userData.motion.baseX = mesh.position.x;
-      mesh.userData.motion.baseY = mesh.position.y;
-      guard++;
-    }
+
+    let { x, y } = pickSpawnXY(m.lane, m.anchor);
+    const nudged = nudgeFromSafeZone(
+      x,
+      y,
+      halfW,
+      halfH,
+      this.camera,
+      this.container.clientWidth,
+      this.container.clientHeight
+    );
+
+    m.baseX = nudged.x;
+    m.baseY = nudged.y;
+    m.z = Z_SPAWN - Math.random() * 6;
+    m.spawnZ = m.z;
+    m.baseRot = m.baseRot + (Math.random() - 0.5) * 0.08;
+
+    d.x = m.baseX;
+    d.y = m.baseY;
+    d.z = m.z;
+    d.rot = m.baseRot;
+
+    mesh.position.set(d.x, d.y, d.z);
+    mesh.rotation.z = d.rot;
+    mesh.material.opacity = 0;
+    mesh.scale.setScalar(m.scaleSpawn);
+  }
+
+  spawnFadeDistance() {
+    return this.manifest.settings?.spawnFadeDistance ?? ASSET_FIELD.spawnFadeDistance;
   }
 
   onPointerMove(event) {
@@ -209,27 +372,24 @@ export class AssetField {
   }
 
   onPointerLeave() {
-    this.isHoveringAsset = false;
     this.hoverDwell = 0;
     this.targetSpeed = this.reducedMotion ? 0.3 : HOVER.normalSpeed;
+    this.pointer.set(-9, -9);
   }
 
   updateHover(dt) {
     this.raycaster.setFromCamera(this.pointer, this.camera);
-    const hits = this.raycaster.intersectObjects(
-      this.items.filter((m) => m.userData.entry?.hoverable !== false)
-    );
+    const hoverables = this.items.filter((m) => m.userData.entry?.hoverable !== false);
+    const hits = this.raycaster.intersectObjects(hoverables);
     const hovering = hits.length > 0;
 
     if (hovering) {
       this.hoverDwell += dt * 1000;
       if (this.hoverDwell >= HOVER.dwellMs) {
-        this.isHoveringAsset = true;
         this.targetSpeed = HOVER.slowSpeed;
       }
     } else {
       this.hoverDwell = 0;
-      this.isHoveringAsset = false;
       this.targetSpeed = this.reducedMotion ? 0.3 : HOVER.normalSpeed;
     }
 
@@ -240,37 +400,38 @@ export class AssetField {
   updateMotion(dt) {
     const t = this.clock.getElapsedTime();
     const speedMul = this.reducedMotion ? 0.35 : this.globalSpeed;
+    const fadeDistance = this.spawnFadeDistance();
 
     for (const mesh of this.items) {
       const m = mesh.userData.motion;
       const d = mesh.userData.display;
-      const [zMin, zMax] = m.zRange;
-      const span = zMax - zMin;
       const rate = m.speed * speedMul * dt;
 
-      m.z += rate * 2.2;
-      if (m.z > zMax) {
-        m.z = zMin;
-        m.baseX += (Math.random() - 0.5) * 0.6;
-        m.baseY += (Math.random() - 0.5) * 0.4;
-        this.nudgeFromSafeZone(mesh);
-        m.baseX = mesh.position.x;
-        m.baseY = mesh.position.y;
+      m.z += rate * 2.4;
+
+      if (m.z > Z_DESPAWN) {
+        this.respawnStream(mesh);
+        continue;
       }
 
-      const targetX = m.baseX + Math.sin(t * m.sway.freq + m.phase) * m.sway.amp * 8;
-      const targetY = m.baseY + Math.cos(t * m.sway.freq * 0.85 + m.phase) * m.sway.amp * 6;
+      const targetX = m.baseX + Math.sin(t * m.sway.freq + m.phase) * m.sway.amp * 6;
+      const targetY = m.baseY + Math.cos(t * m.sway.freq * 0.85 + m.phase) * m.sway.amp * 4.5;
       const targetZ = m.z;
-      const targetRot = mesh.rotation.z + m.rotSpeed * speedMul * dt * 0.15;
+      const targetRot = m.baseRot + Math.sin(t * 0.15 + m.phase) * 0.04;
 
       const f = m.lag;
       d.x = lerp(d.x, targetX, f);
       d.y = lerp(d.y, targetY, f);
-      d.z = lerp(d.z, targetZ, f);
-      d.rot = lerp(d.rot, targetRot, f * 0.5);
+      d.z = lerp(d.z, targetZ, f * 1.2);
+      d.rot = lerp(d.rot, targetRot, f * 0.6);
 
       mesh.position.set(d.x, d.y, d.z);
       mesh.rotation.z = d.rot;
+      mesh.renderOrder = -d.z;
+      mesh.scale.setScalar(depthScaleAlongPath(m.z, m.spawnZ, m.scaleSpawn, m.scaleFront));
+
+      const traveled = Math.max(0, m.z - m.spawnZ);
+      mesh.material.opacity = fadeOpacity(traveled, fadeDistance, m.targetOpacity);
     }
   }
 

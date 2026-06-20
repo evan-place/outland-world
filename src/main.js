@@ -1,35 +1,31 @@
 import assetsManifest from "./data/assets.json";
 import storyData from "./data/story.json";
 import { AssetField } from "./scene/asset-field.js";
-import { TextWarp } from "./scene/text-warp.js";
-import { createLenis, initStoryScroll } from "./scroll/story-scroll.js";
+import { StoryText } from "./scene/story-text.js";
+import { initStoryScroll } from "./scroll/story-scroll.js";
 
 async function main() {
   const webglRoot = document.getElementById("webgl-root");
-  const storyCanvas = document.getElementById("story-canvas");
+  const storyTextA = document.getElementById("story-text-a");
+  const storyTextB = document.getElementById("story-text-b");
   const beats = storyData.beats;
 
   const assetField = new AssetField(webglRoot, assetsManifest);
-  const textWarp = new TextWarp(storyCanvas, beats);
+  const storyText = new StoryText(storyTextA, storyTextB, beats);
 
-  createLenis();
+  await assetField.loadPromise;
 
   initStoryScroll({
     beats,
-    onBeatChange: (index, progress) => {
-      textWarp.setBeatState(index, progress);
-    },
-    onTransitionProgress: (index, progress) => {
-      textWarp.setBeatState(index, progress);
+    onBeatChange: (fromIndex, progress) => {
+      storyText.setBeatState(fromIndex, progress);
     },
   });
 
-  const a11y = document.getElementById("story-a11y");
-  a11y.innerHTML = beats[0].html.replace(/<[^>]+>/g, "");
+  document.body.focus({ preventScroll: true });
 
-  function loop(time) {
+  function loop() {
     assetField.render();
-    textWarp.render(time * 0.001);
     requestAnimationFrame(loop);
   }
   requestAnimationFrame(loop);
