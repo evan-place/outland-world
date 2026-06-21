@@ -31,6 +31,7 @@ export const STORY_TRANSITION = {
 
 export const SAFE_ZONE = {
   width: 600,
+  mobileWidth: 274,
   heightRatio: 0.4,
 };
 

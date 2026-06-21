@@ -16,10 +16,17 @@
       <div id="webgl-root" aria-hidden="true"></div>
 
       <div id="story-layer">
-        <div class="story-text-stack">
-          <p id="story-text-a" class="story-text" aria-live="polite"></p>
-          <p id="story-text-b" class="story-text" aria-hidden="true"></p>
-          <canvas id="story-canvas" aria-hidden="true"></canvas>
+        <div class="story-stage">
+          <div class="story-text-stack">
+            <p id="story-text-a" class="story-text" aria-live="polite"></p>
+            <p id="story-text-b" class="story-text" aria-hidden="true"></p>
+            <canvas id="story-canvas" aria-hidden="true"></canvas>
+          </div>
+          <div id="story-progress" class="story-progress" hidden aria-hidden="true">
+            <div class="story-progress__track">
+              <div class="story-progress__fill"></div>
+            </div>
+          </div>
         </div>
         <div id="story-a11y" class="visually-hidden" aria-live="polite"></div>
       </div>
@@ -37,9 +44,9 @@
             <div class="rail-meta-col rail-meta-col--border">
               <span class="rail-label">Introduction</span>
             </div>
-            <div class="rail-meta-col">
+            <div class="rail-meta-col rail-meta-col--numbers">
               <span class="rail-label">01</span>
-              <span class="rail-label rail-label--tall">EnterOutland 2026</span>
+              <span class="rail-label">EnterOutland 2026</span>
             </div>
           </div>
         </div>
@@ -63,12 +70,6 @@
           />
         </button>
       </footer>
-
-      <div id="story-progress" class="story-progress" hidden aria-hidden="true">
-        <div class="story-progress__track">
-          <div class="story-progress__fill"></div>
-        </div>
-      </div>
     </div>
     <script type="module" src="/src/main.js"></script>
   </body>

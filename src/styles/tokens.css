@@ -12,4 +12,29 @@
   --safe-zone-width: 600px;
   --safe-zone-height: 40vh;
   --rail-width: 118px;
+
+  --chrome-logo-top: 16px;
+  --chrome-logo-height: 45px;
+  --chrome-cta-bottom: 48px;
+  --chrome-cta-height: 40px;
+  --chrome-story-zone-top: calc(var(--chrome-logo-top) + var(--chrome-logo-height));
+  --chrome-story-zone-bottom: calc(var(--chrome-cta-bottom) + var(--chrome-cta-height));
+  --story-stage-gap: 32px;
+  --story-progress-width: 157px;
+}
+
+@media (max-width: 768px) {
+  :root {
+    /* Figma mobile frame (4880:275) */
+    --story-max-width: 274px;
+    --safe-zone-width: 274px;
+    --chrome-logo-top: 70px;
+    --chrome-logo-height: 31px;
+    --chrome-mobile-rail-height: 124px;
+    --chrome-cta-gap-above-rail: 32px;
+    --chrome-cta-bottom: calc(
+      var(--chrome-mobile-rail-height) + var(--chrome-cta-gap-above-rail)
+    );
+    --story-progress-width: 158px;
+  }
 }

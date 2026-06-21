@@ -1,6 +1,6 @@
 .chrome-logo {
   position: fixed;
-  top: 16px;
+  top: var(--chrome-logo-top);
   left: 134px;
   z-index: 10;
   pointer-events: none;
@@ -8,7 +8,7 @@
 
 .chrome-logo img {
   display: block;
-  height: 45px;
+  height: var(--chrome-logo-height);
   width: auto;
 }
 
@@ -116,11 +116,12 @@
 
 .chrome-cta {
   position: fixed;
-  bottom: 48px;
+  bottom: var(--chrome-cta-bottom);
   left: 50%;
   transform: translateX(-50%);
   z-index: 10;
   display: flex;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 10px;
   pointer-events: auto;
@@ -130,6 +131,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+  width: auto;
   height: 40px;
   box-sizing: border-box;
   font-family: var(--font-mono);
@@ -137,6 +140,7 @@
   line-height: 1;
   letter-spacing: 0.01em;
   text-transform: uppercase;
+  white-space: nowrap;
   color: var(--monorail-white);
   background: transparent;
   border: 1px solid var(--monorail-white);
@@ -151,15 +155,12 @@
 }
 
 .story-progress {
-  position: fixed;
-  bottom: 108px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 10;
-  width: 157px;
+  position: relative;
+  width: var(--story-progress-width);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.35s ease;
+  flex-shrink: 0;
 }
 
 .story-progress--visible {
@@ -186,38 +187,106 @@
 
 @media (max-width: 768px) {
   .chrome-logo {
-    left: 24px;
-    top: 12px;
+    left: 50%;
+    top: var(--chrome-logo-top);
+    transform: translateX(-50%);
   }
 
   .chrome-logo img {
-    height: 32px;
+    height: var(--chrome-logo-height);
   }
 
   .chrome-rail {
-    width: 72px;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: auto;
+    border-right: none;
+    border-bottom: none;
+    border-top: 1px solid var(--system-grey);
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+
+  .rail-inner {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-end;
+    gap: 8px;
+    height: auto;
+    width: 100%;
+    padding: 16px 16px 0;
+    box-sizing: border-box;
   }
 
   .rail-dept {
-    font-size: 16px;
-    width: 16px;
+    writing-mode: horizontal-tb;
+    transform: none;
+    width: auto;
+    max-width: none;
+    font-size: 20px;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+    text-align: left;
+    flex-shrink: 0;
+    mix-blend-mode: exclusion;
+  }
+
+  .rail-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    width: 100%;
+    gap: 0;
+    height: auto;
+    margin: 0;
+    padding: 0;
+    border: none;
+    text-align: right;
   }
 
   .rail-meta-col {
-    padding: 0 6px;
+    display: flex;
+    width: auto;
+    padding: 0;
+    gap: 0;
+    height: auto;
+  }
+
+  .rail-meta-col--border {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-top: 1px solid var(--system-grey);
+    border-bottom: 1px solid var(--system-grey);
+    border-left: none;
+    border-right: none;
+    padding: 12px 0;
+  }
+
+  .rail-meta-col--numbers {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 0;
+  }
+
+  .rail-label {
+    writing-mode: horizontal-tb;
+    transform: none;
+    font-size: 12.5px;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+    line-height: normal;
+  }
+
+  .rail-label--tall {
+    height: auto;
   }
 
   .chrome-cta {
-    bottom: 24px;
-  }
-
-  .story-progress {
-    bottom: 76px;
-    width: 120px;
-  }
-
-  .cta-pill {
-    font-size: 13px;
-    padding: 0 14px;
+    bottom: var(--chrome-cta-bottom);
   }
 }

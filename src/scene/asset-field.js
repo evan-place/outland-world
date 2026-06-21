@@ -165,12 +165,16 @@ function pickHomeXY(lane, anchor) {
   return { x: x * inward, y: y * inward };
 }
 
+function getSafeZoneWidth(viewportWidth) {
+  return viewportWidth < 768 ? SAFE_ZONE.mobileWidth : SAFE_ZONE.width;
+}
+
 function overlapsSafeZone(x, y, halfW, halfH, camera, width, height) {
   const v = new THREE.Vector3(x, y, 0);
   v.project(camera);
   const sx = (v.x * 0.5 + 0.5) * width;
   const sy = (-v.y * 0.5 + 0.5) * height;
-  const safeW = SAFE_ZONE.width;
+  const safeW = getSafeZoneWidth(width);
   const safeH = height * SAFE_ZONE.heightRatio;
   const cx = width / 2;
   const cy = height / 2;
