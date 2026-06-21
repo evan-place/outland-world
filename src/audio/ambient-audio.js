@@ -13,8 +13,8 @@ export function initAmbientAudio() {
   audio.preload = "auto";
   audio.volume = 0.7;
 
+  /** User-facing mute state (also reflects autoplay blocked). */
   let muted = false;
-  let started = false;
 
   const syncUI = () => {
     if (!button || !icon) return;
@@ -24,31 +24,43 @@ export function initAmbientAudio() {
   };
 
   const startPlayback = async () => {
-    if (muted) return;
+    if (muted) return false;
     try {
+      audio.muted = false;
       await audio.play();
-      started = true;
+      return true;
     } catch {
-      /* autoplay blocked until user gesture */
+      /* Autoplay policy: unmuted playback needs a user gesture. */
+      return false;
     }
   };
 
-  const unlockOnGesture = () => {
-    if (!muted) startPlayback();
-  };
-
-  button?.addEventListener("click", () => {
-    muted = !muted;
+  const applyMutedState = (nextMuted) => {
+    muted = nextMuted;
     audio.muted = muted;
     syncUI();
-    if (!muted) startPlayback();
+  };
+
+  button?.addEventListener("click", async () => {
+    if (muted) {
+      applyMutedState(false);
+      const ok = await startPlayback();
+      if (!ok) {
+        applyMutedState(true);
+      }
+    } else {
+      applyMutedState(true);
+      audio.pause();
+    }
   });
 
-  document.addEventListener("pointerdown", unlockOnGesture, { once: true, passive: true });
-  document.addEventListener("keydown", unlockOnGesture, { once: true });
-
   syncUI();
-  startPlayback();
+
+  startPlayback().then((ok) => {
+    if (!ok) {
+      applyMutedState(true);
+    }
+  });
 
   return { audio };
 }
