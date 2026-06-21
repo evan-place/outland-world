@@ -1,11 +1,12 @@
 import * as THREE from "three";
-import { SIZE_CLASS_PRESETS, HOVER, SAFE_ZONE, ASSET_FIELD } from "../config.js";
+import {
+  SIZE_CLASS_PRESETS,
+  SAFE_ZONE,
+  ASSET_FIELD,
+  ASSET_FIELD_INTRO,
+} from "../config.js";
 import { assetUrl } from "../utils/asset-url.js";
 
-/** Assets drift toward the camera (+Z) and respawn far behind only once off-screen. */
-const Z_SPAWN = -26;
-const Z_DESPAWN = 9;
-const STREAM_DEPTH = Z_DESPAWN - Z_SPAWN;
 const DEFAULT_INSTANCES_PER_ASSET = 2;
 
 const BLEND_MAP = {
@@ -53,9 +54,15 @@ function smoothstep(t) {
   return clamped * clamped * (3 - 2 * clamped);
 }
 
-function spreadAlongPath(z, spawnZ, spreadEndZ) {
+function easeOutPower(t, power) {
+  const clamped = Math.max(0, Math.min(1, t));
+  return 1 - Math.pow(1 - clamped, power);
+}
+
+function spreadAlongPath(z, spawnZ, spreadEndZ, power = 1) {
   const range = Math.max(0.5, spreadEndZ - spawnZ);
-  return smoothstep((z - spawnZ) / range);
+  const t = smoothstep((z - spawnZ) / range);
+  return power <= 1 ? t : Math.pow(t, power);
 }
 
 function resolveDepthScale(entry, manifest) {
@@ -67,8 +74,9 @@ function resolveDepthScale(entry, manifest) {
   };
 }
 
-function depthScaleAlongPath(z, spawnZ, scaleSpawn, scaleFront) {
-  const range = Math.max(1, Z_DESPAWN - spawnZ - 2);
+function depthScaleAlongPath(z, spawnZ, scaleSpawn, scaleFront, zBounds) {
+  const despawn = zBounds?.despawn ?? ASSET_FIELD.zDespawn;
+  const range = Math.max(1, despawn - spawnZ - 2);
   const t = Math.max(0, Math.min(1, (z - spawnZ) / range));
   const eased = t * t * (3 - 2 * t);
   return lerp(scaleSpawn, scaleFront, eased);
@@ -153,7 +161,8 @@ function pickHomeXY(lane, anchor) {
     y = lerp(y, hint.y, 0.35);
   }
 
-  return { x, y };
+  const inward = ASSET_FIELD.homeInward ?? 0.9;
+  return { x: x * inward, y: y * inward };
 }
 
 function overlapsSafeZone(x, y, halfW, halfH, camera, width, height) {
@@ -191,18 +200,16 @@ export class AssetField {
     this.container = container;
     this.manifest = manifest;
     this.items = [];
-    this.globalSpeed = 1;
-    this.targetSpeed = 1;
-    this.hoverDwell = 0;
-    this.pointer = new THREE.Vector2(-9, -9);
-    this.raycaster = new THREE.Raycaster();
     this.clock = new THREE.Clock();
     this.reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     this.loadErrors = [];
+    this.introElapsed = 0;
+    this.introComplete = false;
 
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(48, 1, 0.1, 80);
-    this.camera.position.set(0, 0, 14);
+    const intro = this.introSettings();
+    this.camera.position.set(0, 0, intro.enabled && !this.reducedMotion ? intro.cameraZStart : intro.cameraZEnd);
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -211,12 +218,8 @@ export class AssetField {
     container.appendChild(this.renderer.domElement);
 
     this._onResize = () => this.resize();
-    this._onPointerMove = (e) => this.onPointerMove(e);
-    this._onPointerLeave = () => this.onPointerLeave();
 
     window.addEventListener("resize", this._onResize);
-    window.addEventListener("pointermove", this._onPointerMove);
-    window.addEventListener("pointerleave", this._onPointerLeave);
 
     this.resize();
     this.loadPromise = this.load();
@@ -228,23 +231,31 @@ export class AssetField {
     const assets = (this.manifest.assets || []).filter((a) => a.enabled !== false);
     const defaultInstances =
       this.manifest.settings?.instancesPerAsset ?? DEFAULT_INSTANCES_PER_ASSET;
-
-    await Promise.all(
-      assets.map(async (entry) => {
-        try {
-          const tex = await loader.loadAsync(assetUrl(entry.src));
-          tex.colorSpace = THREE.SRGBColorSpace;
-
-          const instanceCount = entry.instances ?? defaultInstances;
-          for (let i = 0; i < instanceCount; i++) {
-            this.spawnInstance(entry, tex, isMobile, i, instanceCount);
-          }
-        } catch (err) {
-          console.error(`[AssetField] Failed to load: ${entry.id} (${entry.src})`, err);
-          this.loadErrors.push(entry.id);
-        }
-      })
+    const priorityCount = Math.min(
+      this.priorityLoadCount(),
+      assets.length
     );
+
+    const loadOne = async (entry) => {
+      try {
+        const tex = await loader.loadAsync(assetUrl(entry.src));
+        tex.colorSpace = THREE.SRGBColorSpace;
+
+        const instanceCount = entry.instances ?? defaultInstances;
+        for (let i = 0; i < instanceCount; i++) {
+          this.spawnInstance(entry, tex, isMobile, i, instanceCount);
+        }
+      } catch (err) {
+        console.error(`[AssetField] Failed to load: ${entry.id} (${entry.src})`, err);
+        this.loadErrors.push(entry.id);
+      }
+    };
+
+    const priority = assets.slice(0, priorityCount);
+    const rest = assets.slice(priorityCount);
+
+    await Promise.all(priority.map(loadOne));
+    await Promise.all(rest.map(loadOne));
 
     if (this.loadErrors.length) {
       console.warn("[AssetField] Missing assets:", this.loadErrors.join(", "));
@@ -278,17 +289,24 @@ export class AssetField {
     const motion = entry.motion || {};
     const lane = entry.layout?.lane ?? "free";
     const tunnel = this.tunnelSettings();
-    const stagger = (instanceIndex / Math.max(1, instanceCount)) * STREAM_DEPTH;
-    const z = Z_SPAWN + stagger + Math.random() * 4;
+    const zBounds = this.zBounds();
+    const streamDepth = zBounds.despawn - zBounds.spawn;
+    const stagger = (instanceIndex / Math.max(1, instanceCount)) * streamDepth;
+    const spawnZ = zBounds.spawn + stagger + Math.random() * 3;
+    const depthAdvance =
+      hash01(instanceIndex * 7.31 + 2.17) *
+      this.initialDepthSpread() *
+      this.spawnFadeDistance();
+    const z = spawnZ + depthAdvance;
 
     const home = this.resolveHomePosition(entry, lane, width, height);
     const origin = this.originJitter(instanceIndex, tunnel);
     const baseRot = THREE.MathUtils.degToRad(entry.layout?.rotation ?? 0);
     const depthScale = resolveDepthScale(entry, this.manifest);
-    const spawnScale = depthScaleAlongPath(z, z, depthScale.spawn, depthScale.front);
+    const spawnScale = depthScaleAlongPath(z, spawnZ, depthScale.spawn, depthScale.front, zBounds);
     const start = this.positionAlongTunnel(
       {
-        spawnZ: z,
+        spawnZ,
         spreadEndZ: tunnel.spreadEndZ,
         originX: origin.x,
         originY: origin.y,
@@ -303,6 +321,9 @@ export class AssetField {
     mesh.scale.setScalar(spawnScale);
     mesh.renderOrder = 0;
 
+    const traveled = Math.max(0, z - spawnZ);
+    mat.opacity = fadeOpacity(traveled, this.spawnFadeDistance(), targetOpacity);
+
     mesh.userData.entry = entry;
     mesh.userData.motion = {
       speed: motion.speed ?? 0.28,
@@ -316,8 +337,9 @@ export class AssetField {
       homeX: home.x,
       homeY: home.y,
       spreadEndZ: tunnel.spreadEndZ,
+      spreadPower: tunnel.spreadPower,
       z,
-      spawnZ: z,
+      spawnZ,
       scaleSpawn: depthScale.spawn,
       scaleFront: depthScale.front,
       targetOpacity,
@@ -338,9 +360,10 @@ export class AssetField {
     const height = mesh.geometry.parameters.height;
 
     const home = this.resolveHomePosition(entry, m.lane, width, height);
+    const zBounds = this.zBounds();
     m.homeX = home.x;
     m.homeY = home.y;
-    m.z = Z_SPAWN - Math.random() * 6;
+    m.z = zBounds.spawn - Math.random() * 4;
     m.spawnZ = m.z;
     m.baseRot = m.baseRot + (Math.random() - 0.5) * 0.08;
 
@@ -360,6 +383,22 @@ export class AssetField {
     return this.manifest.settings?.spawnFadeDistance ?? ASSET_FIELD.spawnFadeDistance;
   }
 
+  initialDepthSpread() {
+    return this.manifest.settings?.initialDepthSpread ?? ASSET_FIELD.initialDepthSpread;
+  }
+
+  priorityLoadCount() {
+    return this.manifest.settings?.priorityLoadCount ?? ASSET_FIELD.priorityLoadCount;
+  }
+
+  zBounds() {
+    const settings = this.manifest.settings ?? {};
+    return {
+      spawn: settings.zSpawn ?? ASSET_FIELD.zSpawn,
+      despawn: settings.zDespawn ?? ASSET_FIELD.zDespawn,
+    };
+  }
+
   tunnelSettings() {
     const settings = this.manifest.settings ?? {};
     return {
@@ -367,6 +406,84 @@ export class AssetField {
       vanishY: settings.vanishingPoint?.y ?? ASSET_FIELD.vanishingPoint.y,
       vanishJitter: settings.vanishJitter ?? ASSET_FIELD.vanishJitter,
       spreadEndZ: settings.spreadEndZ ?? ASSET_FIELD.spreadEndZ,
+      spreadPower: settings.spreadPower ?? ASSET_FIELD.spreadPower,
+    };
+  }
+
+  introSettings() {
+    const manifest = this.manifest.settings?.intro ?? {};
+    const defaults = ASSET_FIELD_INTRO;
+    return {
+      enabled: manifest.enabled ?? defaults.enabled,
+      durationMs: manifest.durationMs ?? defaults.durationMs,
+      reducedDurationMs: manifest.reducedDurationMs ?? defaults.reducedDurationMs,
+      depthSpeedStart: manifest.depthSpeedStart ?? defaults.depthSpeedStart,
+      reducedDepthSpeedStart:
+        manifest.reducedDepthSpeedStart ?? defaults.reducedDepthSpeedStart,
+      easePower: manifest.easePower ?? defaults.easePower,
+      cameraZStart: manifest.cameraZStart ?? defaults.cameraZStart,
+      cameraZEnd: manifest.cameraZEnd ?? defaults.cameraZEnd,
+      spreadCompression: manifest.spreadCompression ?? defaults.spreadCompression,
+      scaleBoostStart: manifest.scaleBoostStart ?? defaults.scaleBoostStart,
+      opacityBoostStart: manifest.opacityBoostStart ?? defaults.opacityBoostStart,
+    };
+  }
+
+  /** 0→1 progress through first-load warp exit; null when intro disabled or finished. */
+  introProgress() {
+    if (this.introComplete) return null;
+    const intro = this.introSettings();
+    if (!intro.enabled) {
+      this.introComplete = true;
+      return null;
+    }
+
+    const duration = this.reducedMotion ? intro.reducedDurationMs : intro.durationMs;
+    if (duration <= 0) {
+      this.introComplete = true;
+      return null;
+    }
+
+    const t = Math.min(1, this.introElapsed / (duration / 1000));
+    if (t >= 1) {
+      this.introComplete = true;
+      this.camera.position.z = intro.cameraZEnd;
+      return null;
+    }
+
+    return easeOutPower(t, intro.easePower);
+  }
+
+  updateIntro(dt) {
+    if (this.introComplete) return;
+    const intro = this.introSettings();
+    if (!intro.enabled) {
+      this.introComplete = true;
+      return;
+    }
+    this.introElapsed += dt;
+    const eased = this.introProgress();
+    if (eased == null) return;
+
+    const introCfg = this.introSettings();
+    this.camera.position.z = lerp(introCfg.cameraZStart, introCfg.cameraZEnd, eased);
+  }
+
+  introMotionFactors() {
+    const eased = this.introProgress();
+    if (eased == null) {
+      return { depthMul: 1, spreadMul: 1, scaleMul: 1, opacityMul: 1 };
+    }
+
+    const intro = this.introSettings();
+    const depthStart = this.reducedMotion ? intro.reducedDepthSpeedStart : intro.depthSpeedStart;
+    const rush = 1 - eased;
+
+    return {
+      depthMul: lerp(1, depthStart, rush),
+      spreadMul: lerp(1, intro.spreadCompression, rush),
+      scaleMul: lerp(1, intro.scaleBoostStart, rush),
+      opacityMul: lerp(1, intro.opacityBoostStart, rush),
     };
   }
 
@@ -395,8 +512,13 @@ export class AssetField {
   }
 
   positionAlongTunnel(m, z) {
-    const spread = spreadAlongPath(z, m.spawnZ, m.spreadEndZ);
-    const swayMul = lerp(0.12, 1, spread);
+    return this.positionAlongTunnelWithSpread(m, z, 1);
+  }
+
+  positionAlongTunnelWithSpread(m, z, spreadMul = 1) {
+    const spread =
+      spreadAlongPath(z, m.spawnZ, m.spreadEndZ, m.spreadPower ?? 1) * spreadMul;
+    const swayMul = lerp(0.12, 0.88, spread);
     return {
       spread,
       swayMul,
@@ -405,65 +527,29 @@ export class AssetField {
     };
   }
 
-  onPointerMove(event) {
-    const rect = this.renderer.domElement.getBoundingClientRect();
-    if (
-      event.clientX < rect.left ||
-      event.clientX > rect.right ||
-      event.clientY < rect.top ||
-      event.clientY > rect.bottom
-    ) {
-      this.onPointerLeave();
-      return;
-    }
-    this.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    this.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-  }
-
-  onPointerLeave() {
-    this.hoverDwell = 0;
-    this.targetSpeed = this.reducedMotion ? 0.3 : HOVER.normalSpeed;
-    this.pointer.set(-9, -9);
-  }
-
-  updateHover(dt) {
-    this.raycaster.setFromCamera(this.pointer, this.camera);
-    const hoverables = this.items.filter((m) => m.userData.entry?.hoverable !== false);
-    const hits = this.raycaster.intersectObjects(hoverables);
-    const hovering = hits.length > 0;
-
-    if (hovering) {
-      this.hoverDwell += dt * 1000;
-      if (this.hoverDwell >= HOVER.dwellMs) {
-        this.targetSpeed = HOVER.slowSpeed;
-      }
-    } else {
-      this.hoverDwell = 0;
-      this.targetSpeed = this.reducedMotion ? 0.3 : HOVER.normalSpeed;
-    }
-
-    const lerpFactor = 1 - Math.exp(-dt / (HOVER.tweenMs / 1000));
-    this.globalSpeed = lerp(this.globalSpeed, this.targetSpeed, lerpFactor);
-  }
-
   updateMotion(dt) {
     const t = this.clock.getElapsedTime();
-    const speedMul = this.reducedMotion ? 0.35 : this.globalSpeed;
+    const speedMul = this.reducedMotion ? 0.35 : 1;
     const fadeDistance = this.spawnFadeDistance();
+    const zBounds = this.zBounds();
+    const intro = this.introMotionFactors();
+    const streamRange = Math.max(1, zBounds.despawn - zBounds.spawn - 2);
 
     for (const mesh of this.items) {
       const m = mesh.userData.motion;
       const d = mesh.userData.display;
-      const rate = m.speed * speedMul * dt;
+      const streamT = Math.max(0, Math.min(1, (m.z - m.spawnZ) / streamRange));
+      const frontBoost = 1 + streamT * 0.32;
+      const rate = m.speed * speedMul * intro.depthMul * frontBoost * dt;
 
       m.z += rate * 2.4;
 
-      if (m.z > Z_DESPAWN) {
+      if (m.z > zBounds.despawn) {
         this.respawnStream(mesh);
         continue;
       }
 
-      const tunnelPos = this.positionAlongTunnel(m, m.z);
+      const tunnelPos = this.positionAlongTunnelWithSpread(m, m.z, intro.spreadMul);
       const targetX =
         tunnelPos.x + Math.sin(t * m.sway.freq + m.phase) * m.sway.amp * 6 * tunnelPos.swayMul;
       const targetY =
@@ -474,16 +560,22 @@ export class AssetField {
       const f = m.lag;
       d.x = lerp(d.x, targetX, f);
       d.y = lerp(d.y, targetY, f);
-      d.z = lerp(d.z, targetZ, f * 1.2);
+      d.z = targetZ;
       d.rot = lerp(d.rot, targetRot, f * 0.6);
 
       mesh.position.set(d.x, d.y, d.z);
       mesh.rotation.z = d.rot;
       mesh.renderOrder = -d.z;
-      mesh.scale.setScalar(depthScaleAlongPath(m.z, m.spawnZ, m.scaleSpawn, m.scaleFront));
+      const depthScale =
+        depthScaleAlongPath(m.z, m.spawnZ, m.scaleSpawn, m.scaleFront, zBounds) *
+        intro.scaleMul *
+        lerp(1, 1.14, streamT);
+      mesh.scale.setScalar(depthScale);
 
       const traveled = Math.max(0, m.z - m.spawnZ);
-      mesh.material.opacity = fadeOpacity(traveled, fadeDistance, m.targetOpacity);
+      const baseOpacity = fadeOpacity(traveled, fadeDistance, m.targetOpacity);
+      const frontOpacity = lerp(1, 1.08, streamT);
+      mesh.material.opacity = Math.min(1, baseOpacity * intro.opacityMul * frontOpacity);
     }
   }
 
@@ -497,15 +589,13 @@ export class AssetField {
 
   render() {
     const dt = Math.min(this.clock.getDelta(), 0.05);
-    this.updateHover(dt);
+    this.updateIntro(dt);
     this.updateMotion(dt);
     this.renderer.render(this.scene, this.camera);
   }
 
   dispose() {
     window.removeEventListener("resize", this._onResize);
-    window.removeEventListener("pointermove", this._onPointerMove);
-    window.removeEventListener("pointerleave", this._onPointerLeave);
     for (const mesh of this.items) {
       mesh.geometry.dispose();
       mesh.material.map?.dispose();

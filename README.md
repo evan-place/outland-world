@@ -15,7 +15,6 @@ npm start
 Then open **http://localhost:5173/** in your browser.
 
 - **Scroll once** to advance one story beat (crossfade auto-completes).
-- **Hover** any drifting document asset to slow all motion.
 - **Edit live**: changes to `src/data/story.json`, `src/data/assets.json`, or styles reload automatically.
 
 To test the production build locally:
@@ -58,7 +57,7 @@ Styles: `serif-xl`, `serif-lg`, `serif-md`.
 
 ## Add a document asset
 
-1. Place image in `public/assets/` (WebP or PNG; keep long edge ≤ 1600px when possible).
+1. Place image in `public/assets/` (WebP or PNG; keep long edge ≤ 1600px when possible). Use URL-safe filenames (kebab-case, no spaces).
 2. Append entry to [`src/data/assets.json`](src/data/assets.json):
 
 ```json
@@ -67,7 +66,6 @@ Styles: `serif-xl`, `serif-lg`, `serif-md`.
   "src": "/assets/my-doc.webp",
   "alt": "Description",
   "blendMode": "normal",
-  "hoverable": true,
   "instances": 2,
   "size": {
     "maxWidth": 360,
@@ -102,6 +100,8 @@ Global default instance count: `settings.instancesPerAsset` in `assets.json`.
 
 Set `"enabled": false` to hide without deleting.
 
+**Chrome-only assets** (logo, etc.) live in `public/brand/` — not in the asset field manifest.
+
 ### Spawn fade-in
 
 New and respawned assets fade in over the first part of their drift path (no pop-in). Tune globally in `assets.json`:
@@ -135,7 +135,6 @@ Global defaults live in `settings.depthScale` inside `assets.json`.
 ## Interaction
 
 - Assets drift automatically through 3D space (config-driven from `assets.json`).
-- Hover any asset to slow all motion (time thickens).
 - One scroll advances one story beat; the crossfade completes on its own.
 
 ## Fonts

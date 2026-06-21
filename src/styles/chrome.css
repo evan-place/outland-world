@@ -12,6 +12,37 @@
   width: auto;
 }
 
+.chrome-audio {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-radius: 200px;
+  background: transparent;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.chrome-audio img {
+  display: block;
+  width: 40px;
+  height: 40px;
+}
+
+.chrome-audio:hover {
+  opacity: 0.92;
+}
+
+.chrome-audio:focus-visible {
+  outline: 1px solid var(--monorail-white);
+  outline-offset: 4px;
+}
+
 .chrome-rail {
   position: fixed;
   top: 0;
@@ -96,26 +127,27 @@
 }
 
 .cta-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  box-sizing: border-box;
   font-family: var(--font-mono);
   font-size: 16px;
+  line-height: 1;
   letter-spacing: 0.01em;
   text-transform: uppercase;
   color: var(--monorail-white);
   background: transparent;
   border: 1px solid var(--monorail-white);
   border-radius: 200px;
-  padding: 16px;
+  padding: 0 16px;
   cursor: pointer;
   mix-blend-mode: exclusion;
 }
 
 .cta-pill:hover {
   opacity: 0.85;
-}
-
-.cta-wave {
-  mix-blend-mode: exclusion;
-  display: block;
 }
 
 .story-progress {
@@ -186,6 +218,6 @@
 
   .cta-pill {
     font-size: 13px;
-    padding: 12px 14px;
+    padding: 0 14px;
   }
 }

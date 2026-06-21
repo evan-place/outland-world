@@ -1,50 +1,64 @@
 uniform sampler2D uTextureA;
 uniform sampler2D uTextureB;
 uniform float uProgress;
-uniform float uTime;
-uniform float uWarpStrength;
-uniform float uChroma;
-uniform float uAspect;
+uniform vec2 uResolution;
+uniform float uFrameAspectA;
+uniform float uFrameAspectB;
 
 varying vec2 vUv;
 
-float parabola(float t, float peak) {
-  return 4.0 * t * (1.0 - t);
-}
-
-float hash(vec2 p) {
-  return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
-}
-
-float noise(vec2 p) {
-  vec2 i = floor(p);
-  vec2 f = fract(p);
-  float a = hash(i);
-  float b = hash(i + vec2(1.0, 0.0));
-  float c = hash(i + vec2(0.0, 1.0));
-  float d = hash(i + vec2(1.0, 1.0));
-  vec2 u = f * f * (3.0 - 2.0 * f);
-  return mix(a, b, u.x) + (c - a) * u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
+vec2 containUV(vec2 uv, float frameAspect) {
+  float viewAspect = uResolution.x / max(uResolution.y, 0.001);
+  vec2 scale = vec2(1.0);
+  if (frameAspect > viewAspect) {
+    scale.y = viewAspect / frameAspect;
+  } else {
+    scale.x = frameAspect / viewAspect;
+  }
+  return clamp((uv - 0.5) / scale + 0.5, 0.002, 0.998);
 }
 
 void main() {
-  vec2 uv = vUv;
-  float warpAmt = parabola(uProgress, 2.0) * uWarpStrength;
-  float n = noise(uv * 4.0 + vec2(uTime * 0.15, uProgress * 3.0));
-  float wave = sin(uv.y * 12.0 + uTime * 0.8 + uProgress * 6.28) * 0.5 + 0.5;
+  float t = clamp(uProgress, 0.0, 1.0);
 
-  vec2 disp = vec2(
-    (n - 0.5) * warpAmt + sin(uv.y * 8.0 + uTime) * warpAmt * 0.35,
-    (wave - 0.5) * warpAmt * 0.6
-  );
+  if (t <= 0.001) {
+    gl_FragColor = texture2D(uTextureA, containUV(vUv, uFrameAspectA));
+    return;
+  }
 
-  vec2 uvA = uv + disp * (1.0 - uProgress);
-  vec2 uvB = uv - disp * uProgress;
+  if (t >= 0.999) {
+    gl_FragColor = texture2D(uTextureB, containUV(vUv, uFrameAspectB));
+    return;
+  }
 
-  float chroma = uChroma * parabola(uProgress, 2.0);
-  vec4 colA = texture2D(uTextureA, uvA + vec2(chroma, 0.0));
-  vec4 colB = texture2D(uTextureB, uvB - vec2(chroma, 0.0));
+  float warp = sin(t * 3.14159265) * (0.5 + t * 0.55);
+  vec2 uvA = containUV(vUv, uFrameAspectA);
+  vec2 uvB = containUV(vUv, uFrameAspectB);
 
-  vec4 color = mix(colA, colB, smoothstep(0.0, 1.0, uProgress));
-  gl_FragColor = color;
+  float edge = max(abs(vUv.x - 0.5), abs(vUv.y - 0.5)) * 2.0;
+  float innerLimit = mix(0.92, 0.28, smoothstep(0.0, 1.0, t));
+  float edgeMask = smoothstep(max(innerLimit - 0.24, 0.0), 1.0, edge);
+  edgeMask = edgeMask * edgeMask * (3.0 - 2.0 * edgeMask);
+  float distort = warp * edgeMask * 3.0;
+
+  vec2 cA = uvA - 0.5;
+  float radialA = pow(dot(cA, cA) * 4.0, 1.9);
+  vec2 sampleA = cA / (1.0 + distort * radialA) + 0.5;
+  sampleA = containUV(sampleA, uFrameAspectA);
+
+  vec2 cB = uvB - 0.5;
+  float radialB = pow(dot(cB, cB) * 4.0, 1.9);
+  vec2 sampleB = cB / (1.0 + distort * radialB) + 0.5;
+  sampleB = containUV(sampleB, uFrameAspectB);
+
+  vec4 fromCol = texture2D(uTextureA, sampleA);
+  vec4 toCol = texture2D(uTextureB, sampleB);
+
+  float mixAmt = smoothstep(0.08, 0.92, t);
+  vec4 col = mix(fromCol, toCol, mixAmt);
+
+  col.rgb *= 1.0 - edgeMask * warp * 0.18;
+  col.rgb -= sin((vUv.y + t * 0.08) * uResolution.y * 1.8) * 0.01 * warp * edgeMask;
+
+  gl_FragColor = col;
 }

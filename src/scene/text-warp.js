@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import vert from "../shaders/text-warp.vert?raw";
 import frag from "../shaders/text-warp.frag?raw";
-import { STYLE_PRESETS } from "../config.js";
+import { STYLE_PRESETS, STORY_TRANSITION } from "../config.js";
 
 function parseHtmlToLines(html, maxWidth, ctx, style) {
   const temp = document.createElement("div");
@@ -59,7 +59,6 @@ function parseHtmlToLines(html, maxWidth, ctx, style) {
 }
 
 export function renderBeatToCanvas(canvas, html, style, dpr = 2) {
-  const preset = STYLE_PRESETS[style] || STYLE_PRESETS["serif-lg"];
   const maxWidth = 514;
   const pad = 8;
 
@@ -68,20 +67,22 @@ export function renderBeatToCanvas(canvas, html, style, dpr = 2) {
   const { lines, fontSize, lineHeight } = parseHtmlToLines(html, maxWidth - pad * 2, mctx, style);
 
   const height = Math.ceil(lines.length * lineHeight + pad * 2);
-  canvas.width = Math.ceil((maxWidth + pad * 2) * dpr);
+  const canvasW = maxWidth + pad * 2;
+
+  canvas.width = Math.ceil(canvasW * dpr);
   canvas.height = Math.ceil(height * dpr);
-  canvas.style.width = `${maxWidth + pad * 2}px`;
+  canvas.style.width = `${canvasW}px`;
   canvas.style.height = `${height}px`;
 
   const ctx = canvas.getContext("2d");
-  ctx.scale(dpr, dpr);
-  ctx.clearRect(0, 0, maxWidth + pad * 2, height);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, canvasW, height);
   ctx.fillStyle = "#fcfcf5";
   ctx.textBaseline = "top";
-  ctx.textAlign = "center";
+  ctx.textAlign = "left";
 
   const fontFamily = '"Ivory LL", Georgia, serif';
-  const cx = (maxWidth + pad * 2) / 2;
+  const cx = canvasW / 2;
 
   lines.forEach((line, li) => {
     const y = pad + li * lineHeight;
@@ -101,16 +102,23 @@ export function renderBeatToCanvas(canvas, html, style, dpr = 2) {
     }
   });
 
-  return { width: maxWidth + pad * 2, height, preset };
+  return { width: canvasW, height, aspect: canvasW / height };
+}
+
+function easeTransition(t) {
+  return Math.pow(Math.max(0, Math.min(1, t)), STORY_TRANSITION.easePower);
 }
 
 export class TextWarp {
   constructor(canvasEl, beats) {
     this.canvasEl = canvasEl;
     this.beats = beats;
-    this.currentIndex = 0;
+    this.fromIndex = 0;
+    this.toIndex = 0;
     this.progress = 0;
     this.reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    this.frameAspectA = 514 / 120;
+    this.frameAspectB = 514 / 120;
 
     this.texCanvasA = document.createElement("canvas");
     this.texCanvasB = document.createElement("canvas");
@@ -123,10 +131,9 @@ export class TextWarp {
       uTextureA: { value: null },
       uTextureB: { value: null },
       uProgress: { value: 0 },
-      uTime: { value: 0 },
-      uWarpStrength: { value: this.reducedMotion ? 0 : 0.12 },
-      uChroma: { value: this.reducedMotion ? 0 : 0.006 },
-      uAspect: { value: 1 },
+      uResolution: { value: new THREE.Vector2(1, 1) },
+      uFrameAspectA: { value: this.frameAspectA },
+      uFrameAspectB: { value: this.frameAspectB },
     };
 
     this.material = new THREE.ShaderMaterial({
@@ -145,7 +152,7 @@ export class TextWarp {
     this.renderer = new THREE.WebGLRenderer({
       canvas: canvasEl,
       alpha: true,
-      antialias: true,
+      antialias: false,
     });
     this.renderer.setPixelRatio(this.dpr);
     this.renderer.setClearColor(0x000000, 0);
@@ -154,52 +161,97 @@ export class TextWarp {
     this.texB = new THREE.CanvasTexture(this.texCanvasB);
     this.texA.colorSpace = THREE.SRGBColorSpace;
     this.texB.colorSpace = THREE.SRGBColorSpace;
+    this.texA.minFilter = THREE.LinearFilter;
+    this.texB.minFilter = THREE.LinearFilter;
 
     this.uniforms.uTextureA.value = this.texA;
     this.uniforms.uTextureB.value = this.texB;
 
-    this.renderBeatPair(0, 1);
+    this.renderBeatPair(0, 0);
     this.resize();
-    window.addEventListener("resize", () => this.resize());
+    this._onResize = () => this.resize();
+    window.addEventListener("resize", this._onResize);
   }
 
   renderBeatPair(fromIdx, toIdx) {
     const from = this.beats[fromIdx] ?? this.beats[0];
     const to = this.beats[toIdx] ?? from;
     const sizeA = renderBeatToCanvas(this.texCanvasA, from.html, from.style, this.dpr);
-    const sizeB = renderBeatToCanvas(this.texCanvasB, to.html, to.style, this.dpr);
+    const sizeB =
+      toIdx === fromIdx
+        ? sizeA
+        : renderBeatToCanvas(this.texCanvasB, to.html, to.style, this.dpr);
+
+    if (toIdx === fromIdx) {
+      const ctx = this.texCanvasB.getContext("2d");
+      ctx.clearRect(0, 0, this.texCanvasB.width, this.texCanvasB.height);
+      ctx.drawImage(this.texCanvasA, 0, 0);
+      this.frameAspectB = sizeA.aspect;
+    } else {
+      this.frameAspectB = sizeB.aspect;
+    }
+
+    this.frameAspectA = sizeA.aspect;
+    this.uniforms.uFrameAspectA.value = this.frameAspectA;
+    this.uniforms.uFrameAspectB.value = this.frameAspectB;
+
     this.texA.needsUpdate = true;
     this.texB.needsUpdate = true;
-    this.contentAspect = Math.max(sizeA.height, sizeB.height) / (sizeA.width || 514);
+
+    this.fromIndex = fromIdx;
+    this.toIndex = toIdx;
     this.resize();
   }
 
-  setBeatState(index, progress) {
+  setBeatState(index, rawProgress) {
     const idx = Math.max(0, Math.min(this.beats.length - 1, index));
     const nextIdx = Math.min(this.beats.length - 1, idx + 1);
+    const clamped = Math.max(0, Math.min(1, rawProgress));
 
-    if (idx !== this.currentIndex) {
-      this.currentIndex = idx;
-      this.renderBeatPair(idx, nextIdx);
+    let warpProgress = 0;
+    if (clamped > 0.001 && idx < this.beats.length - 1) {
+      warpProgress = this.reducedMotion ? (clamped > 0.5 ? 1 : 0) : easeTransition(clamped);
     }
 
-    this.progress = this.reducedMotion ? (progress > 0.5 ? 1 : 0) : progress;
+    if (warpProgress <= 0.001) {
+      if (this.fromIndex !== idx || this.toIndex !== idx) {
+        this.renderBeatPair(idx, idx);
+      }
+      this.progress = 0;
+    } else {
+      if (this.fromIndex !== idx || this.toIndex !== nextIdx) {
+        this.renderBeatPair(idx, nextIdx);
+      }
+      this.progress = warpProgress;
+    }
+
     this.uniforms.uProgress.value = this.progress;
   }
 
   resize() {
     const maxW = Math.min(514, window.innerWidth - 48);
-    const h = maxW * (this.contentAspect || 0.25);
+    const activeAspect =
+      this.progress > 0.001
+        ? Math.min(this.frameAspectA, this.frameAspectB)
+        : this.frameAspectA;
+    const h = maxW / activeAspect;
+
+    this.canvasEl.style.width = `${maxW}px`;
+    this.canvasEl.style.height = `${h}px`;
+
     this.renderer.setSize(maxW, h, false);
-    this.uniforms.uAspect.value = maxW / h;
+    this.uniforms.uResolution.value.set(
+      Math.max(1, Math.floor(maxW * this.dpr)),
+      Math.max(1, Math.floor(h * this.dpr))
+    );
   }
 
-  render(time) {
-    this.uniforms.uTime.value = time;
+  render() {
     this.renderer.render(this.scene, this.camera);
   }
 
   dispose() {
+    window.removeEventListener("resize", this._onResize);
     this.material.dispose();
     this.mesh.geometry.dispose();
     this.texA.dispose();

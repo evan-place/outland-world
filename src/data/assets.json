@@ -1,16 +1,30 @@
 {
   "settings": {
-    "instancesPerAsset": 2,
-    "spawnFadeDistance": 7,
+    "instancesPerAsset": 3,
+    "spawnFadeDistance": 3.5,
+    "zSpawn": -16,
+    "zDespawn": 10.5,
+    "initialDepthSpread": 0.6,
+    "priorityLoadCount": 5,
     "vanishingPoint": { "x": 0, "y": 0 },
     "vanishJitter": 0.45,
-    "spreadEndZ": -2.5,
+    "spreadEndZ": 1.8,
+    "spreadPower": 1.28,
     "depthScale": {
-      "spawn": 0.1,
-      "front": 1.35
+      "spawn": 0.18,
+      "front": 1.58
+    },
+    "intro": {
+      "durationMs": 1600,
+      "depthSpeedStart": 4.6,
+      "easePower": 2.65,
+      "cameraZStart": 20.5,
+      "spreadCompression": 0.32,
+      "scaleBoostStart": 1.1,
+      "opacityBoostStart": 1.12
     },
     "safeZone": {
-      "width": 514,
+      "width": 600,
       "heightRatio": 0.4
     }
   },
@@ -20,7 +34,6 @@
       "src": "/assets/terrain-purple.png",
       "alt": "Terrain scan",
       "blendMode": "screen",
-      "hoverable": true,
       "opacity": 0.87,
       "instances": 2,
       "size": {
@@ -34,62 +47,10 @@
       "motion": { "speed": 0.28, "sway": { "amp": 0.05, "freq": 0.18 }, "rotSpeed": 0.04 }
     },
     {
-      "id": "world-builders-logo",
-      "src": "/assets/world-builders-text-1.png",
-      "alt": "New World Builders",
-      "blendMode": "normal",
-      "hoverable": true,
-      "opacity": 1,
-      "instances": 2,
-      "size": {
-        "maxWidth": 300,
-        "scale": 0.9,
-        "scaleJitter": 0.15,
-        "depthScale": { "spawn": 0.28, "front": 0.58 }
-      },
-      "layout": { "lane": "top-left", "anchor": { "x": 0.12, "y": 0.34 }, "rotation": 4.4 },
-      "motion": { "speed": 0.22, "sway": { "amp": 0.03, "freq": 0.25 }, "rotSpeed": 0.06 }
-    },
-    {
-      "id": "world-builders-logo-2",
-      "src": "/assets/world-builders-text-2.png",
-      "alt": "New World Builders accent",
-      "blendMode": "normal",
-      "hoverable": true,
-      "opacity": 1,
-      "instances": 2,
-      "size": {
-        "maxWidth": 200,
-        "scale": 0.85,
-        "scaleJitter": 0.18,
-        "depthScale": { "spawn": 0.3, "front": 0.52 }
-      },
-      "layout": { "lane": "top-left", "anchor": { "x": 0.1, "y": 0.3 }, "rotation": 4.4 },
-      "motion": { "speed": 0.2, "sway": { "amp": 0.025, "freq": 0.28 }, "rotSpeed": 0.05 }
-    },
-    {
-      "id": "world-builders-logo-3",
-      "src": "/assets/world-builders-text-3.png",
-      "alt": "New World Builders mark",
-      "blendMode": "normal",
-      "hoverable": true,
-      "opacity": 0.95,
-      "instances": 2,
-      "size": {
-        "maxWidth": 160,
-        "scale": 0.8,
-        "scaleJitter": 0.15,
-        "depthScale": { "spawn": 0.32, "front": 0.48 }
-      },
-      "layout": { "lane": "top-left", "anchor": { "x": 0.16, "y": 0.4 }, "rotation": 4.4 },
-      "motion": { "speed": 0.18, "sway": { "amp": 0.03, "freq": 0.3 }, "rotSpeed": 0.07 }
-    },
-    {
-      "id": "world-builders-accent",
+      "id": "world-builders",
       "src": "/assets/world-builders.png",
       "alt": "World builders graphic",
       "blendMode": "normal",
-      "hoverable": true,
       "opacity": 0.95,
       "instances": 2,
       "size": {
@@ -102,28 +63,42 @@
       "motion": { "speed": 0.32, "sway": { "amp": 0.04, "freq": 0.2 }, "rotSpeed": 0.05 }
     },
     {
-      "id": "world-motion",
-      "src": "/assets/world-motion.png",
-      "alt": "World of Motion",
-      "blendMode": "screen",
-      "hoverable": true,
-      "opacity": 1,
+      "id": "group-collage-a",
+      "src": "/assets/group-1597884273.png",
+      "alt": "Collage element",
+      "blendMode": "normal",
+      "opacity": 0.92,
       "instances": 2,
       "size": {
-        "maxWidth": 292,
-        "scale": 0.95,
-        "scaleJitter": 0.12,
-        "depthScale": { "spawn": 0.22, "front": 0.68 }
+        "maxWidth": 380,
+        "scale": 0.88,
+        "scaleJitter": 0.14,
+        "depthScale": { "spawn": 0.16, "front": 1.1 }
       },
-      "layout": { "lane": "top-right", "anchor": { "x": 0.68, "y": 0.08 }, "rotation": 13.17 },
-      "motion": { "speed": 0.26, "sway": { "amp": 0.035, "freq": 0.22 }, "rotSpeed": 0.07 }
+      "layout": { "lane": "top-left", "anchor": { "x": 0.14, "y": 0.32 }, "rotation": -6 },
+      "motion": { "speed": 0.24, "sway": { "amp": 0.035, "freq": 0.22 }, "rotSpeed": 0.05 }
+    },
+    {
+      "id": "group-collage-b",
+      "src": "/assets/group-1597884301.png",
+      "alt": "Collage strip",
+      "blendMode": "screen",
+      "opacity": 0.9,
+      "instances": 2,
+      "size": {
+        "maxWidth": 420,
+        "scale": 0.85,
+        "scaleJitter": 0.12,
+        "depthScale": { "spawn": 0.18, "front": 0.95 }
+      },
+      "layout": { "lane": "top-right", "anchor": { "x": 0.78, "y": 0.12 }, "rotation": 8 },
+      "motion": { "speed": 0.26, "sway": { "amp": 0.03, "freq": 0.24 }, "rotSpeed": 0.06 }
     },
     {
       "id": "orbit-graphic",
       "src": "/assets/orbit-graphic.png",
       "alt": "Orbit diagram",
       "blendMode": "color-dodge",
-      "hoverable": true,
       "opacity": 0.92,
       "instances": 2,
       "size": {
@@ -136,11 +111,90 @@
       "motion": { "speed": 0.3, "sway": { "amp": 0.045, "freq": 0.19 }, "rotSpeed": 0.03 }
     },
     {
+      "id": "rectangle-square",
+      "src": "/assets/rectangle-346256853.png",
+      "alt": "Texture square",
+      "blendMode": "lighten",
+      "opacity": 0.85,
+      "instances": 2,
+      "size": {
+        "maxWidth": 320,
+        "scale": 0.75,
+        "scaleJitter": 0.15,
+        "depthScale": { "spawn": 0.2, "front": 0.88 }
+      },
+      "layout": { "lane": "left", "anchor": { "x": 0.1, "y": 0.62 }, "rotation": 12 },
+      "motion": { "speed": 0.22, "sway": { "amp": 0.04, "freq": 0.21 }, "rotSpeed": 0.07 }
+    },
+    {
+      "id": "rectangle-wide",
+      "src": "/assets/rectangle-346256863.png",
+      "alt": "Wide collage panel",
+      "blendMode": "normal",
+      "opacity": 0.94,
+      "instances": 2,
+      "size": {
+        "maxWidth": 480,
+        "scale": 0.9,
+        "scaleJitter": 0.1,
+        "depthScale": { "spawn": 0.11, "front": 1.35 }
+      },
+      "layout": { "lane": "right", "anchor": { "x": 0.86, "y": 0.38 }, "rotation": -4 },
+      "motion": { "speed": 0.28, "sway": { "amp": 0.038, "freq": 0.18 }, "rotSpeed": 0.04 }
+    },
+    {
+      "id": "3d-strip",
+      "src": "/assets/3d-5.png",
+      "alt": "3D terrain strip",
+      "blendMode": "screen",
+      "opacity": 0.88,
+      "instances": 2,
+      "size": {
+        "maxWidth": 520,
+        "scale": 0.7,
+        "scaleJitter": 0.1,
+        "depthScale": { "spawn": 0.15, "front": 1.05 }
+      },
+      "layout": { "lane": "top", "anchor": { "x": 0.5, "y": 0.06 }, "rotation": -2 },
+      "motion": { "speed": 0.3, "sway": { "amp": 0.03, "freq": 0.2 }, "rotSpeed": 0.03 }
+    },
+    {
+      "id": "vector-ring",
+      "src": "/assets/vector.png",
+      "alt": "Vector diagram",
+      "blendMode": "color-dodge",
+      "opacity": 0.8,
+      "instances": 2,
+      "size": {
+        "maxWidth": 400,
+        "scale": 0.72,
+        "scaleJitter": 0.12,
+        "depthScale": { "spawn": 0.14, "front": 1.15 }
+      },
+      "layout": { "lane": "top-left", "anchor": { "x": 0.22, "y": 0.18 }, "rotation": 15 },
+      "motion": { "speed": 0.2, "sway": { "amp": 0.05, "freq": 0.17 }, "rotSpeed": 0.08 }
+    },
+    {
+      "id": "lands-panorama",
+      "src": "/assets/lands5-4.png",
+      "alt": "Lands panorama",
+      "blendMode": "screen",
+      "opacity": 0.86,
+      "instances": 2,
+      "size": {
+        "maxWidth": 560,
+        "scale": 0.82,
+        "scaleJitter": 0.08,
+        "depthScale": { "spawn": 0.1, "front": 1.5 }
+      },
+      "layout": { "lane": "bottom", "anchor": { "x": 0.42, "y": 0.94 }, "rotation": -3 },
+      "motion": { "speed": 0.25, "sway": { "amp": 0.035, "freq": 0.16 }, "rotSpeed": 0.02 }
+    },
+    {
       "id": "galaxy",
       "src": "/assets/galaxy.png",
       "alt": "Galaxy",
       "blendMode": "lighten",
-      "hoverable": true,
       "opacity": 0.88,
       "instances": 2,
       "size": {
@@ -153,11 +207,62 @@
       "motion": { "speed": 0.24, "sway": { "amp": 0.05, "freq": 0.16 }, "rotSpeed": 0.02 }
     },
     {
+      "id": "texture-studies",
+      "src": "/assets/texture-studies-01-036.png",
+      "alt": "Texture studies",
+      "blendMode": "lighten",
+      "opacity": 0.82,
+      "instances": 2,
+      "size": {
+        "maxWidth": 420,
+        "maxHeight": 680,
+        "scale": 0.78,
+        "scaleJitter": 0.1,
+        "depthScale": { "spawn": 0.08, "front": 1.75 }
+      },
+      "layout": { "lane": "bottom-left", "anchor": { "x": 0.18, "y": 0.88 }, "rotation": -8 },
+      "motion": { "speed": 0.22, "sway": { "amp": 0.04, "freq": 0.15 }, "rotSpeed": 0.03 }
+    },
+    {
+      "id": "image-portrait",
+      "src": "/assets/image-12514558.png",
+      "alt": "Portrait collage",
+      "blendMode": "normal",
+      "opacity": 0.93,
+      "instances": 2,
+      "size": {
+        "maxWidth": 340,
+        "maxHeight": 450,
+        "scale": 0.8,
+        "scaleJitter": 0.12,
+        "depthScale": { "spawn": 0.12, "front": 1.2 }
+      },
+      "layout": { "lane": "left", "anchor": { "x": 0.06, "y": 0.35 }, "rotation": 5 },
+      "motion": { "speed": 0.23, "sway": { "amp": 0.042, "freq": 0.19 }, "rotSpeed": 0.05 }
+    },
+    {
+      "id": "rectangle-tall",
+      "src": "/assets/rectangle-346256864.png",
+      "alt": "Tall collage panel",
+      "blendMode": "normal",
+      "opacity": 0.96,
+      "instances": 2,
+      "size": {
+        "maxWidth": 480,
+        "maxHeight": 720,
+        "scale": 0.85,
+        "scaleJitter": 0.08,
+        "depthScale": { "spawn": 0.07, "front": 1.95 }
+      },
+      "sizeMobile": { "maxWidth": 200, "scale": 0.42, "depthScale": { "spawn": 0.12, "front": 1.15 } },
+      "layout": { "lane": "bottom-right", "anchor": { "x": 0.88, "y": 0.9 }, "rotation": 4 },
+      "motion": { "speed": 0.21, "sway": { "amp": 0.038, "freq": 0.14 }, "rotSpeed": 0.04 }
+    },
+    {
       "id": "paper-dept",
       "src": "/assets/paper-dept.png",
       "alt": "Dept. of Imagination form",
       "blendMode": "normal",
-      "hoverable": true,
       "opacity": 1,
       "instances": 2,
       "size": {

@@ -13,9 +13,9 @@ export const STYLE_PRESETS = {
 };
 
 export const SCROLL = {
-  transitionDuration: 0.55,
-  transitionMinDuration: 0.28,
-  transitionKick: 0.22,
+  transitionDuration: 0.9,
+  transitionMinDuration: 0.45,
+  transitionKick: 0.12,
   wheelThreshold: 30,
   wheelAccumDecayMs: 70,
   momentumGuardMs: 220,
@@ -29,25 +29,62 @@ export const STORY_TRANSITION = {
   mixEdgeHigh: 0.92,
 };
 
-export const HOVER = {
-  slowSpeed: 0.2,
-  normalSpeed: 1,
-  tweenMs: 600,
-  dwellMs: 100,
-};
-
 export const SAFE_ZONE = {
-  width: 514,
+  width: 600,
   heightRatio: 0.4,
 };
 
 export const ASSET_FIELD = {
-  spawnFadeDistance: 7,
+  /** Z distance over which opacity ramps from 0 → target (lower = visible sooner). */
+  spawnFadeDistance: 3.5,
+  /** World-space spawn / despawn Z for the asset stream. */
+  zSpawn: -16,
+  zDespawn: 10.5,
+  /** Pre-advance new instances 0–1 along fade distance so some appear mid-stream on load. */
+  initialDepthSpread: 0.6,
+  /** How many manifest entries to load before the rest (first textures on screen fastest). */
+  priorityLoadCount: 3,
   depthScale: {
-    spawn: 0.1,
-    front: 1.35,
+    spawn: 0.18,
+    front: 1.58,
   },
+  homeInward: 0.9,
   vanishingPoint: { x: 0, y: 0 },
   vanishJitter: 0.45,
-  spreadEndZ: -2.5,
+  /** Z at which lateral spread reaches full home position (higher = stay centered longer). */
+  spreadEndZ: 1.8,
+  /** >1 delays outward drift — assets travel toward camera before fanning out. */
+  spreadPower: 1.28,
+};
+
+/** First-load only — rush from depth then settle into ambient drift (warp exit). */
+export const ASSET_FIELD_INTRO = {
+  enabled: true,
+  /** Full deceleration arc (ms). */
+  durationMs: 1600,
+  /** prefers-reduced-motion: greatly shortened rush. */
+  reducedDurationMs: 280,
+  /** Depth Z multiplier at t=0 → eases to 1. Higher = faster initial rush. */
+  depthSpeedStart: 4.6,
+  /** Ease-out power for deceleration curve (higher = longer high-speed tail). */
+  easePower: 2.65,
+  /** Reduced-motion depth multiplier peak (near 1 = minimal rush). */
+  reducedDepthSpeedStart: 1.2,
+  /** Camera dolly: start further back, ease to resting Z. */
+  cameraZStart: 20.5,
+  cameraZEnd: 14,
+  /** At rush peak, compress tunnel spread toward vanishing point (0–1). */
+  spreadCompression: 0.32,
+  /** Brief scale / opacity lift during rush, eases to 1. */
+  scaleBoostStart: 1.1,
+  opacityBoostStart: 1.12,
+};
+
+/** First-beat intro text — only on initial page load, not when revisiting beat 0. */
+export const STORY_INTRO = {
+  baseDelayMs: 200,
+  durationMs: 1200,
+  wordStaggerMs: 85,
+  driftY: 12,
+  scaleFrom: 0.968,
 };

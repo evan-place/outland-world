@@ -8,8 +8,8 @@
   --font-serif: "Ivory LL", Georgia, serif;
   --font-screen: "Px Grotesk Screen", var(--font-sans);
 
-  --story-max-width: 514px;
-  --safe-zone-width: 514px;
+  --story-max-width: 600px;
+  --safe-zone-width: 600px;
   --safe-zone-height: 40vh;
   --rail-width: 118px;
 }
