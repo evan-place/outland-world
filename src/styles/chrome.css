@@ -26,6 +26,7 @@
   background: transparent;
   cursor: pointer;
   pointer-events: auto;
+  mix-blend-mode: exclusion;
 }
 
 .chrome-audio img {
@@ -155,12 +156,17 @@
 }
 
 .story-progress {
-  position: relative;
+  position: fixed;
+  bottom: calc(
+    var(--chrome-cta-bottom) + var(--chrome-cta-height) + var(--story-progress-offset)
+  );
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
   width: var(--story-progress-width);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.35s ease;
-  flex-shrink: 0;
 }
 
 .story-progress--visible {

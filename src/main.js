@@ -1,6 +1,7 @@
 import assetsManifest from "./data/assets.json";
 import storyData from "./data/story.json";
 import { initAmbientAudio } from "./audio/ambient-audio.js";
+import { initContactModal } from "./contact/contact-modal.js";
 import { AssetField } from "./scene/asset-field.js";
 import { StoryText } from "./scene/story-text.js";
 import { initStoryScroll } from "./scroll/story-scroll.js";
@@ -16,6 +17,7 @@ function main() {
   const storyText = new StoryText(storyTextA, storyTextB, storyCanvas, beats);
 
   initAmbientAudio();
+  initContactModal();
 
   initStoryScroll({
     beats,

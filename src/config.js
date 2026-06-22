@@ -13,7 +13,7 @@ export const STYLE_PRESETS = {
 };
 
 export const SCROLL = {
-  transitionDuration: 0.9,
+  transitionDuration: 1.2,
   transitionMinDuration: 0.45,
   transitionKick: 0.12,
   wheelThreshold: 30,
@@ -84,8 +84,25 @@ export const ASSET_FIELD_INTRO = {
 /** First-beat intro text — only on initial page load, not when revisiting beat 0. */
 export const STORY_INTRO = {
   baseDelayMs: 200,
-  durationMs: 1200,
+  durationMs: 1500,
   wordStaggerMs: 85,
   driftY: 12,
   scaleFrom: 0.968,
+};
+
+/** Contact modal — FormSubmit delivers to inbox (confirm address on first submission). */
+export const CONTACT = {
+  toEmail: "team@enteroutland.com",
+  submitUrl: "https://formsubmit.co/ajax/team@enteroutland.com",
+  subject: "New inquiry from Outland",
+};
+
+/** Production site — URL follows build base path (see docs/DEPLOY.md). */
+const pagesBase = import.meta.env.BASE_URL;
+export const SITE = {
+  url:
+    pagesBase === "/"
+      ? "https://enteroutland.com"
+      : `https://evan-place.github.io${pagesBase.replace(/\/$/, "")}`,
+  domain: "enteroutland.com",
 };

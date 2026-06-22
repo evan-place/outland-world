@@ -17,8 +17,13 @@
   --chrome-logo-height: 45px;
   --chrome-cta-bottom: 48px;
   --chrome-cta-height: 40px;
+  --story-progress-offset: 32px;
+  --story-progress-height: 4px;
   --chrome-story-zone-top: calc(var(--chrome-logo-top) + var(--chrome-logo-height));
-  --chrome-story-zone-bottom: calc(var(--chrome-cta-bottom) + var(--chrome-cta-height));
+  --chrome-story-zone-bottom: calc(
+    var(--chrome-cta-bottom) + var(--chrome-cta-height) + var(--story-progress-offset) +
+      var(--story-progress-height)
+  );
   --story-stage-gap: 32px;
   --story-progress-width: 157px;
 }

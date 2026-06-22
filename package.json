@@ -7,7 +7,9 @@
     "dev": "vite",
     "start": "vite",
     "build": "vite build",
+    "build:pages": "SITE_SUBPATH=/outland-world/ vite build",
     "preview": "vite preview",
+    "preview:pages": "npm run build:pages && vite preview",
     "validate:assets": "node scripts/validate-assets.mjs"
   },
   "devDependencies": {

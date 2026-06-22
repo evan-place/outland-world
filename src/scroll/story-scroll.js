@@ -1,11 +1,6 @@
 import gsap from "gsap";
 import { SCROLL } from "../config.js";
 
-function easeTransition(t) {
-  const clamped = Math.max(0, Math.min(1, t));
-  return clamped * clamped * (3 - 2 * t);
-}
-
 export function initStoryScroll({ beats, onBeatChange }) {
   const a11y = document.getElementById("story-a11y");
   const progressEl = document.getElementById("story-progress");
@@ -38,13 +33,13 @@ export function initStoryScroll({ beats, onBeatChange }) {
   };
 
   const applyState = (from, t) => {
-    const eased = easeTransition(t);
+    const progress = Math.max(0, Math.min(1, t));
     const settledBeat =
-      eased < 0.02 ? from : eased > 0.98 ? Math.min(beatCount - 1, from + 1) : from;
+      progress < 0.02 ? from : progress > 0.98 ? Math.min(beatCount - 1, from + 1) : from;
 
     a11y.innerHTML = beats[settledBeat].html.replace(/<[^>]+>/g, "");
-    updateProgress(from, eased);
-    onBeatChange?.(from, eased);
+    updateProgress(from, progress);
+    onBeatChange?.(from, progress);
   };
 
   const settleAt = (beat) => {

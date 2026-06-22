@@ -152,22 +152,17 @@ npm run preview
 
 **https://evan-place.github.io/outland-world/**
 
-Pushes to `main` auto-deploy via GitHub Actions (`.github/workflows/deploy.yml`).
+Pushes to `main` auto-deploy via GitHub Actions.
+
+Custom domain cutover (`enteroutland.com`): **[docs/DEPLOY.md](docs/DEPLOY.md)**
 
 ## Deploy
 
-Static output in `dist/` — deploy to Vercel, Netlify, or GitHub Pages.
-
 ```bash
-npm run build
+npm run build:pages   # match github.io/outland-world/
+npm run preview:pages
 ```
 
-For GitHub Pages, set `GITHUB_PAGES=true` when building so asset paths use `/outland-world/`:
-
-```bash
-GITHUB_PAGES=true npm run build
-```
-
-Then enable Pages from the `dist` folder or use the included `.github/workflows/deploy.yml`.
+CI builds with `/outland-world/` paths by default. When ready for `enteroutland.com`, follow the cutover steps in `docs/DEPLOY.md` (set repo variable `CUSTOM_DOMAIN=true`).
 
 **Repo:** https://github.com/evan-place/outland-world
