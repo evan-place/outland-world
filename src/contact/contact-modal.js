@@ -18,7 +18,46 @@ export function initContactModal() {
   const subjectInput = form.querySelector('input[name="_subject"]');
   if (subjectInput) subjectInput.value = CONTACT.subject;
 
+  const nameInput = form.querySelector("#contact-name");
+  const emailInput = form.querySelector("#contact-email");
+  const messageInput = form.querySelector("#contact-message");
+
   let lastFocused = null;
+
+  const fieldValues = () => ({
+    name: nameInput?.value.trim() ?? "",
+    email: emailInput?.value.trim() ?? "",
+    company: form.querySelector("#contact-company")?.value.trim() ?? "",
+    message: messageInput?.value.trim() ?? "",
+  });
+
+  const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+
+  const validateForm = () => {
+    const { name, email, message } = fieldValues();
+
+    if (!name) {
+      return { ok: false, message: "Please add your name.", focus: nameInput };
+    }
+    if (!email) {
+      return { ok: false, message: "Please add your email.", focus: emailInput };
+    }
+    if (!isValidEmail(email)) {
+      return { ok: false, message: "Please enter a valid email address.", focus: emailInput };
+    }
+    if (!message) {
+      return { ok: false, message: "Tell us what you're imagining.", focus: messageInput };
+    }
+
+    return { ok: true };
+  };
+
+  const canSubmit = () => validateForm().ok;
+
+  const syncSubmitState = () => {
+    if (!submitBtn) return;
+    submitBtn.disabled = !canSubmit();
+  };
 
   const focusables = () =>
     [...dialog.querySelectorAll(FOCUSABLE)].filter(
@@ -36,7 +75,7 @@ export function initContactModal() {
     form.hidden = false;
     success.hidden = true;
     setError("");
-    submitBtn?.removeAttribute("disabled");
+    syncSubmitState();
   };
 
   const open = () => {
@@ -103,12 +142,32 @@ export function initContactModal() {
     }
   });
 
+  form.addEventListener("input", syncSubmitState);
+  form.addEventListener("change", syncSubmitState);
+  syncSubmitState();
+
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     setError("");
+
+    const validation = validateForm();
+    if (!validation.ok) {
+      setError(validation.message);
+      validation.focus?.focus();
+      syncSubmitState();
+      return;
+    }
+
     submitBtn?.setAttribute("disabled", "true");
 
-    const data = new FormData(form);
+    const { name, email, company, message } = fieldValues();
+    const data = new FormData();
+    data.append("name", name);
+    data.append("email", email);
+    if (company) data.append("company", company);
+    data.append("message", message);
+    data.append("_subject", CONTACT.subject);
+    data.append("_template", "table");
 
     try {
       const response = await fetch(CONTACT.submitUrl, {
@@ -128,7 +187,7 @@ export function initContactModal() {
       success.focus();
     } catch (err) {
       setError(err.message || "Something went wrong. Please try again.");
-      submitBtn?.removeAttribute("disabled");
+      syncSubmitState();
     }
   });
 }
