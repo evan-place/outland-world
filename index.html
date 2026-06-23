@@ -62,21 +62,35 @@
 
       <footer class="chrome-cta">
         <button type="button" id="contact-open" class="cta-pill">Let's Build</button>
-        <button
-          type="button"
-          id="audio-toggle"
-          class="chrome-audio"
-          aria-pressed="false"
-          aria-label="Mute audio"
-        >
-          <img
-            id="audio-toggle-icon"
-            src="/assets/audio-on.svg"
-            alt=""
-            width="40"
-            height="40"
-          />
-        </button>
+        <div class="chrome-audio-wrap">
+          <button
+            type="button"
+            id="audio-toggle"
+            class="chrome-audio"
+            aria-pressed="false"
+            aria-label="Mute audio"
+          >
+            <img
+              id="audio-toggle-icon"
+              src="/assets/audio-on.svg"
+              alt=""
+              width="40"
+              height="40"
+            />
+          </button>
+          <label class="chrome-volume" id="audio-volume-wrap" hidden>
+            <span class="visually-hidden">Volume</span>
+            <input
+              type="range"
+              id="audio-volume"
+              class="chrome-volume__input"
+              min="0"
+              max="100"
+              value="70"
+              aria-label="Volume"
+            />
+          </label>
+        </div>
       </footer>
 
       <div id="contact-modal" class="contact-modal" hidden aria-hidden="true">
