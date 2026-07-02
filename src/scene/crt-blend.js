@@ -10,7 +10,7 @@ const UNIFIED_STYLE = {
 
 function getMeasureEl(sampleEl) {
   const stack = sampleEl?.closest(".story-text-stack");
-  const width = sampleEl?.clientWidth || stack?.clientWidth || DEFAULT_TEXT_WIDTH;
+  const width = sampleEl?.closest(".story-stage")?.clientWidth || stack?.clientWidth || DEFAULT_TEXT_WIDTH;
   let el = document.getElementById("story-text-measure");
 
   if (!el) {
@@ -19,7 +19,7 @@ function getMeasureEl(sampleEl) {
     el.className = "story-text";
     el.setAttribute("aria-hidden", "true");
     el.style.cssText =
-      "position:absolute;left:-9999px;top:0;visibility:hidden;pointer-events:none;margin:0;padding:0;";
+      "position:absolute;left:-9999px;top:0;visibility:hidden;pointer-events:none;margin:0;padding:0;width:100%;";
     (stack || document.body).appendChild(el);
   }
 
@@ -41,7 +41,6 @@ function getDomWordRuns(el) {
   const range = document.createRange();
   const box = el.getBoundingClientRect();
   const runs = [];
-  let lastTop = null;
 
   const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
   let textNode;
@@ -61,10 +60,6 @@ function getDomWordRuns(el) {
       if (rect.width === 0 && rect.height === 0) {
         offset += part.length;
         continue;
-      }
-
-      if (lastTop === null || Math.abs(rect.top - lastTop) > 2) {
-        lastTop = rect.top;
       }
 
       runs.push({
@@ -101,24 +96,36 @@ export function readTextMetrics(sampleEl, textWidth = DEFAULT_TEXT_WIDTH) {
     fontSize,
     lineHeight,
     fontFamily: computed.fontFamily || '"Ivory LL", Georgia, serif',
-    textWidth: sampleEl.clientWidth || textWidth,
+    textWidth:
+      sampleEl?.closest(".story-stage")?.clientWidth ||
+      sampleEl?.closest(".story-text-stack")?.clientWidth ||
+      sampleEl?.clientWidth ||
+      textWidth,
   };
 }
 
-export function renderBeatToFixedCanvas(canvas, html, sampleEl, metrics) {
+function measureBeatBlockH(html, sampleEl, metrics) {
+  const measureEl = getMeasureEl(sampleEl);
+  measureEl.innerHTML = html;
+  measureEl.className = "story-text";
+  return Math.ceil(measureEl.offsetHeight);
+}
+
+export function renderBeatToStageCanvas(canvas, html, sampleEl, metrics, stageH) {
   const measureEl = getMeasureEl(sampleEl);
   measureEl.innerHTML = html;
   measureEl.className = "story-text";
 
   const textWidth = metrics.textWidth;
   const blockH = Math.ceil(measureEl.offsetHeight);
+  const top = Math.max(0, (stageH - blockH) / 2);
 
   canvas.width = Math.floor(textWidth * DPR);
-  canvas.height = Math.floor(blockH * DPR);
+  canvas.height = Math.floor(stageH * DPR);
 
   const ctx = canvas.getContext("2d");
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-  ctx.clearRect(0, 0, textWidth, blockH);
+  ctx.clearRect(0, 0, textWidth, stageH);
   ctx.fillStyle = "#fcfcf5";
   ctx.textBaseline = "top";
 
@@ -135,10 +142,10 @@ export function renderBeatToFixedCanvas(canvas, html, sampleEl, metrics) {
     ctx.font = run.italic
       ? `italic ${fontSize}px ${fontFamily}`
       : `${fontSize}px ${fontFamily}`;
-    ctx.fillText(run.text, run.x, run.y);
+    ctx.fillText(run.text, run.x, run.y + top);
   }
 
-  return { aspect: textWidth / blockH, blockH };
+  return { aspect: textWidth / stageH, blockH, stageH };
 }
 
 const VERT = `
@@ -155,39 +162,64 @@ precision mediump float;
 uniform sampler2D u_from;
 uniform sampler2D u_to;
 uniform float u_progress;
+uniform float u_mode;
+uniform float u_introSettle;
 uniform vec2 u_resolution;
-uniform float u_fromAspect;
-uniform float u_toAspect;
 varying vec2 v_uv;
 
-vec2 containUV(vec2 uv, float texAspect) {
-  float viewAspect = u_resolution.x / u_resolution.y;
-  vec2 scale = vec2(1.0);
-  if (texAspect > viewAspect) {
-    scale.y = viewAspect / texAspect;
-  } else {
-    scale.x = texAspect / viewAspect;
-  }
-  return clamp((uv - 0.5) / scale + 0.5, 0.002, 0.998);
+float smoothPulse(float t) {
+  return sin(t * 3.14159265);
+}
+
+vec2 crtWarp(vec2 uv, float amount) {
+  vec2 c = uv - 0.5;
+  float r2 = clamp(dot(c, c), 0.0, 0.48);
+  float horizEdge = smoothstep(0.12, 0.92, abs(c.x) * 2.0);
+  float kx = 1.0 + amount * r2 * (1.0 + horizEdge * 1.25);
+  float ky = 1.0 + amount * r2 * 0.55;
+  return clamp(vec2(0.5 + c.x * kx, 0.5 + c.y * ky), vec2(0.006), vec2(0.994));
 }
 
 void main() {
-  float t = u_progress;
-  float warp = sin(t * 3.14159265) * 0.2;
+  float t = clamp(u_progress, 0.0, 1.0);
+  bool introMode = u_mode > 0.5;
+  float pulse = introMode ? (1.0 - clamp(u_introSettle, 0.0, 1.0)) : smoothPulse(t);
   float edge = max(abs(v_uv.x - 0.5), abs(v_uv.y - 0.5)) * 2.0;
-  float innerLimit = mix(0.86, 0.58, smoothstep(0.0, 1.0, t));
-  float edgeMask = smoothstep(max(innerLimit - 0.14, 0.0), 1.0, edge);
+  float edgeMask = smoothstep(0.48, 0.95, edge);
   edgeMask = edgeMask * edgeMask * (3.0 - 2.0 * edgeMask);
-  float distort = warp * edgeMask * 0.75;
-  vec2 c = v_uv - 0.5;
-  float radial = pow(dot(c, c) * 3.2, 2.4);
-  float scale = 1.0 + distort * radial;
-  vec2 warped = c / scale + 0.5;
-  vec4 fromCol = texture2D(u_from, containUV(warped, u_fromAspect));
-  vec4 toCol = texture2D(u_to, containUV(warped, u_toAspect));
-  float mixAmt = smoothstep(0.12, 0.88, t);
-  vec4 col = mix(fromCol, toCol, mixAmt);
-  col.rgb *= 1.0 - edgeMask * warp * 0.05;
+
+  float warpAmt = pulse * 0.68 * (0.3 + edgeMask * 0.7);
+  vec2 warped = crtWarp(v_uv, warpAmt);
+
+  float ripple = sin(v_uv.y * u_resolution.y * 0.28 + t * 14.0) * pulse * edgeMask * 0.0048;
+  warped.x += ripple;
+  warped.x += sin(v_uv.x * u_resolution.x * 0.18 + t * 11.0) * pulse * edgeMask * 0.0032;
+
+  float chroma = pulse * edgeMask * 0.007;
+  vec4 fromCol = texture2D(u_from, warped);
+  vec4 toCol = texture2D(u_to, warped);
+  vec4 fromR = texture2D(u_from, vec2(clamp(warped.x + chroma, 0.006, 0.994), warped.y));
+  vec4 toR = texture2D(u_to, vec2(clamp(warped.x + chroma, 0.006, 0.994), warped.y));
+  vec4 fromB = texture2D(u_from, vec2(clamp(warped.x - chroma, 0.006, 0.994), warped.y));
+  vec4 toB = texture2D(u_to, vec2(clamp(warped.x - chroma, 0.006, 0.994), warped.y));
+
+  float mixAmt = introMode ? 1.0 : smoothstep(0.06, 0.94, t);
+  vec4 baseCol = mix(fromCol, toCol, mixAmt);
+  vec4 rCol = mix(fromR, toR, mixAmt);
+  vec4 bCol = mix(fromB, toB, mixAmt);
+  float ca = pulse * edgeMask * 0.65;
+  vec3 fringe = vec3(rCol.r - baseCol.r, 0.0, bCol.b - baseCol.b);
+  vec4 col;
+  col.rgb = baseCol.rgb + fringe * ca;
+  col.a = baseCol.a;
+
+  if (introMode) {
+    col.a *= smoothstep(0.0, 0.22, u_introSettle);
+  }
+
+  float scan = 0.965 + 0.035 * sin(v_uv.y * u_resolution.y * 0.65 + t * 9.0);
+  col.rgb *= mix(1.0, scan, edgeMask * 0.38);
+  col.rgb *= 1.0 - edgeMask * pulse * 0.075;
   gl_FragColor = col;
 }`;
 
@@ -212,6 +244,7 @@ export class CRTBlend {
     this.metrics = readTextMetrics(sampleEl);
     this.displayWidth = this.metrics.textWidth;
     this.displayHeight = 0;
+    this.stageHeight = 0;
     this._initGL();
     this.resize();
   }
@@ -229,9 +262,9 @@ export class CRTBlend {
       from: gl.getUniformLocation(prog, "u_from"),
       to: gl.getUniformLocation(prog, "u_to"),
       progress: gl.getUniformLocation(prog, "u_progress"),
+      mode: gl.getUniformLocation(prog, "u_mode"),
+      introSettle: gl.getUniformLocation(prog, "u_introSettle"),
       resolution: gl.getUniformLocation(prog, "u_resolution"),
-      fromAspect: gl.getUniformLocation(prog, "u_fromAspect"),
-      toAspect: gl.getUniformLocation(prog, "u_toAspect"),
     };
 
     const buf = gl.createBuffer();
@@ -250,14 +283,16 @@ export class CRTBlend {
     const gl = this.gl;
     this.metrics = readTextMetrics(this.sampleEl);
     this.displayWidth = this.metrics.textWidth;
-    this.textures = beats.map((beat) => {
+
+    const blockHeights = beats.map((beat) =>
+      measureBeatBlockH(beat.html, this.sampleEl, this.metrics)
+    );
+    const stageH = Math.max(...blockHeights, 1);
+    this.stageHeight = stageH;
+
+    this.textures = beats.map((beat, index) => {
       const c = document.createElement("canvas");
-      const { aspect, blockH } = renderBeatToFixedCanvas(
-        c,
-        beat.html,
-        this.sampleEl,
-        this.metrics
-      );
+      renderBeatToStageCanvas(c, beat.html, this.sampleEl, this.metrics, stageH);
       const tex = gl.createTexture();
       gl.bindTexture(gl.TEXTURE_2D, tex);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
@@ -265,8 +300,15 @@ export class CRTBlend {
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, c);
-      return { tex, aspect, blockH };
+      return {
+        tex,
+        aspect: this.metrics.textWidth / stageH,
+        blockH: blockHeights[index],
+        stageH,
+      };
     });
+
+    this.setStageHeight(stageH);
   }
 
   _setDisplaySize(width, height) {
@@ -283,12 +325,53 @@ export class CRTBlend {
     this.displayHeight = height;
   }
 
+  setStageHeight(height) {
+    this.stageHeight = Math.max(1, Math.ceil(height));
+    if (this.metrics.textWidth > 0) {
+      this._setDisplaySize(this.metrics.textWidth, this.stageHeight);
+    }
+  }
+
   resize() {
     this.metrics = readTextMetrics(this.sampleEl);
     this.displayWidth = this.metrics.textWidth;
-    if (this.displayHeight > 0) {
+    if (this.stageHeight > 0) {
+      this._setDisplaySize(this.displayWidth, this.stageHeight);
+    } else if (this.displayHeight > 0) {
       this._setDisplaySize(this.displayWidth, this.displayHeight);
     }
+  }
+
+  _draw(beatIndex, { progress = 1, mode = 0, introSettle = -1 } = {}) {
+    const gl = this.gl;
+    const idx = Math.max(0, Math.min(beatIndex, this.textures.length - 1));
+    const meta = this.textures[idx];
+    if (!meta) return;
+
+    if (this.stageHeight > 0 && this.metrics.textWidth > 0) {
+      this._setDisplaySize(this.metrics.textWidth, this.stageHeight);
+    }
+
+    gl.useProgram(this.prog);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, meta.tex);
+    gl.uniform1i(this.u.from, 0);
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, meta.tex);
+    gl.uniform1i(this.u.to, 1);
+    gl.uniform1f(this.u.progress, progress);
+    gl.uniform1f(this.u.mode, mode);
+    gl.uniform1f(this.u.introSettle, introSettle);
+    gl.uniform2f(this.u.resolution, this.canvas.width, this.canvas.height);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  }
+
+  showSettledBeat(beatIndex) {
+    this._draw(beatIndex, { progress: 1, mode: 0, introSettle: -1 });
+  }
+
+  introSettleBeat(beatIndex, settle) {
+    this._draw(beatIndex, { progress: 1, mode: 1, introSettle: settle });
   }
 
   blend(from, to, progress) {
@@ -300,8 +383,9 @@ export class CRTBlend {
     const toMeta = this.textures[toIdx];
     if (!fromMeta || !toMeta) return;
 
-    const blendH = fromMeta.blockH + (toMeta.blockH - fromMeta.blockH) * t;
-    this._setDisplaySize(this.metrics.textWidth, blendH);
+    if (this.stageHeight > 0 && this.metrics.textWidth > 0) {
+      this._setDisplaySize(this.metrics.textWidth, this.stageHeight);
+    }
 
     gl.useProgram(this.prog);
     gl.activeTexture(gl.TEXTURE0);
@@ -311,9 +395,9 @@ export class CRTBlend {
     gl.bindTexture(gl.TEXTURE_2D, toMeta.tex);
     gl.uniform1i(this.u.to, 1);
     gl.uniform1f(this.u.progress, t);
+    gl.uniform1f(this.u.mode, 0);
+    gl.uniform1f(this.u.introSettle, -1);
     gl.uniform2f(this.u.resolution, this.canvas.width, this.canvas.height);
-    gl.uniform1f(this.u.fromAspect, fromMeta.aspect);
-    gl.uniform1f(this.u.toAspect, toMeta.aspect);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }
 }

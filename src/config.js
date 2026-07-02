@@ -22,6 +22,21 @@ export const SCROLL = {
   swipeThreshold: 48,
 };
 
+/** Auto-advance story beats with continuous progress-bar playback. */
+export const AUTO_PLAY = {
+  enabled: true,
+  /** Dwell on beat 0 before first auto-advance (covers text intro). */
+  introDwellMs: 2200,
+  beatDwellMs: 2200,
+  beatDwellLastMs: 2800,
+  /** Matches typical beat transition length (ms). */
+  transitionMs: 1200,
+  reducedIntroDwellMs: 1000,
+  reducedBeatDwellMs: 1400,
+  reducedBeatDwellLastMs: 2200,
+  reducedTransitionMs: 280,
+};
+
 /** Reserved for future CRT / warp transitions */
 export const STORY_TRANSITION = {
   easePower: 1.35,
@@ -33,6 +48,34 @@ export const SAFE_ZONE = {
   width: 600,
   mobileWidth: 274,
   heightRatio: 0.4,
+};
+
+/** Beat-scene asset transitions (warp deceleration in / accelerate out). */
+export const BEAT_ASSETS = {
+  cameraZ: 14,
+  enterZOffset: -20,
+  /** 0 = spawn at vanishing point; 1 = spawn at full home XY. */
+  enterLateralSpread: 0.52,
+  exitZPush: 2.5,
+  exitEdgeDistance: 6.5,
+  exitScale: 0.42,
+  depthScaleFar: 0.06,
+  depthScaleNear: 1,
+  /** Rush from depth early, long eased settle — single smooth curve (no kink). */
+  incomingRushPower: 1.15,
+  incomingSettlePower: 3.8,
+  surfaceLagPower: 0.92,
+  /** First-load intro — slower than beat transitions. */
+  introDurationMs: 2400,
+  /** Beat-to-beat incoming warp (wall clock, continues after text settles). */
+  incomingDurationMs: 2800,
+  /** Outgoing / retreat duration (wall clock, same transition clock). */
+  exitDurationMs: 1000,
+  exitEasePower: 2.4,
+  exitOpacityFadeStart: 0.45,
+  exitFadePower: 2.8,
+  scrollEasePower: 3,
+  transitionKick: 0.12,
 };
 
 export const ASSET_FIELD = {

@@ -16,6 +16,7 @@ const BLEND_MAP = {
   "color-dodge": () => ({ blending: THREE.AdditiveBlending, transparent: true }),
   "plus-lighter": () => ({ blending: THREE.AdditiveBlending, transparent: true }),
   exclusion: () => ({ blending: THREE.NormalBlending, transparent: true }),
+  multiply: () => ({ blending: THREE.MultiplyBlending, transparent: true }),
 };
 
 const LANE_BOUNDS = {
@@ -80,6 +81,37 @@ function depthScaleAlongPath(z, spawnZ, scaleSpawn, scaleFront, zBounds) {
   const t = Math.max(0, Math.min(1, (z - spawnZ) / range));
   const eased = t * t * (3 - 2 * t);
   return lerp(scaleSpawn, scaleFront, eased);
+}
+
+function resolveFloatRotation(motion, instanceIndex) {
+  const rotBase = motion.rotSpeed ?? 0.04;
+  const sign = (seed) => (hash01(seed) > 0.5 ? 1 : -1);
+  const vary = (seed, lo = 0.65, hi = 1.35) => lerp(lo, hi, hash01(seed));
+
+  return {
+    rotVelX: sign(instanceIndex * 3.31) * rotBase * 0.32 * vary(instanceIndex * 4.17),
+    rotVelY: sign(instanceIndex * 5.73) * rotBase * 0.26 * vary(instanceIndex * 6.29),
+    rotVelZ: sign(instanceIndex * 1.13) * rotBase * vary(instanceIndex * 2.71),
+    wobbleAmp: 0.018 + hash01(instanceIndex * 8.37) * 0.022,
+    wobbleFreq: 0.07 + hash01(instanceIndex * 9.19) * 0.09,
+    rotX: 0,
+    rotY: 0,
+    rotZ: 0,
+  };
+}
+
+function applyFloatRotation(mesh, m, t, speedMul, dt) {
+  m.rotX += m.rotVelX * speedMul * dt;
+  m.rotY += m.rotVelY * speedMul * dt;
+  m.rotZ += m.rotVelZ * speedMul * dt;
+
+  const wobbleX = Math.sin(t * m.wobbleFreq * 0.83 + m.phase) * m.wobbleAmp;
+  const wobbleY = Math.cos(t * m.wobbleFreq * 1.07 + m.phase) * m.wobbleAmp;
+  const wobbleZ = Math.sin(t * m.wobbleFreq + m.phase) * m.wobbleAmp * 0.55;
+
+  mesh.rotation.x = m.rotX + wobbleX;
+  mesh.rotation.y = m.rotY + wobbleY;
+  mesh.rotation.z = m.rotZ + wobbleZ;
 }
 
 function resolveSize(entry, texW, texH, isMobile, instanceIndex = 0) {
@@ -301,7 +333,7 @@ export class AssetField {
       hash01(instanceIndex * 7.31 + 2.17) *
       this.initialDepthSpread() *
       this.spawnFadeDistance();
-    const z = spawnZ + depthAdvance;
+    const z = this.resolveSeparatedZ(entry.id, spawnZ + depthAdvance);
 
     const home = this.resolveHomePosition(entry, lane, width, height);
     const origin = this.originJitter(instanceIndex, tunnel);
@@ -321,6 +353,7 @@ export class AssetField {
     );
 
     mesh.position.set(start.x, start.y, z);
+    const floatRot = resolveFloatRotation(motion, instanceIndex);
     mesh.rotation.z = baseRot;
     mesh.scale.setScalar(spawnScale);
     mesh.renderOrder = 0;
@@ -349,8 +382,10 @@ export class AssetField {
       targetOpacity,
       phase: Math.random() * Math.PI * 2,
       lag: 0.06 + Math.random() * 0.05,
+      ...floatRot,
+      rotZ: baseRot,
     };
-    mesh.userData.display = { x: start.x, y: start.y, z, rot: baseRot };
+    mesh.userData.display = { x: start.x, y: start.y, z };
 
     this.scene.add(mesh);
     this.items.push(mesh);
@@ -367,18 +402,23 @@ export class AssetField {
     const zBounds = this.zBounds();
     m.homeX = home.x;
     m.homeY = home.y;
-    m.z = zBounds.spawn - Math.random() * 4;
+    m.z = this.pickRespawnZ(entry.id, mesh);
     m.spawnZ = m.z;
     m.baseRot = m.baseRot + (Math.random() - 0.5) * 0.08;
+    m.phase = Math.random() * Math.PI * 2;
+    Object.assign(m, resolveFloatRotation({ rotSpeed: m.rotSpeed }, Math.random() * 1000));
+    m.rotZ = m.baseRot;
+    m.rotX = 0;
+    m.rotY = 0;
 
     const start = this.positionAlongTunnel(m, m.z);
     d.x = start.x;
     d.y = start.y;
     d.z = m.z;
-    d.rot = m.baseRot;
+
+    mesh.rotation.set(0, 0, m.baseRot);
 
     mesh.position.set(d.x, d.y, d.z);
-    mesh.rotation.z = d.rot;
     mesh.material.opacity = 0;
     mesh.scale.setScalar(m.scaleSpawn);
   }
@@ -401,6 +441,60 @@ export class AssetField {
       spawn: settings.zSpawn ?? ASSET_FIELD.zSpawn,
       despawn: settings.zDespawn ?? ASSET_FIELD.zDespawn,
     };
+  }
+
+  separationGroups() {
+    return this.manifest.settings?.separationGroups ?? [];
+  }
+
+  separationGroupFor(assetId) {
+    for (const group of this.separationGroups()) {
+      if (group.ids?.includes(assetId)) return group;
+    }
+    return null;
+  }
+
+  otherZsInSeparationGroup(assetId, excludeMesh = null) {
+    const group = this.separationGroupFor(assetId);
+    if (!group) return [];
+
+    const otherIds = new Set(group.ids.filter((id) => id !== assetId));
+    return this.items
+      .filter((mesh) => mesh !== excludeMesh && otherIds.has(mesh.userData.entry.id))
+      .map((mesh) => mesh.userData.motion.z);
+  }
+
+  resolveSeparatedZ(assetId, z, excludeMesh = null) {
+    const group = this.separationGroupFor(assetId);
+    if (!group) return z;
+
+    const minSep = group.minZ ?? 10;
+    const zBounds = this.zBounds();
+    const otherZs = this.otherZsInSeparationGroup(assetId, excludeMesh);
+    if (!otherZs.length) return z;
+
+    for (let attempt = 0; attempt < 24; attempt++) {
+      const tooClose = otherZs.some((otherZ) => Math.abs(z - otherZ) < minSep);
+      if (!tooClose) return z;
+
+      const nearest = otherZs.reduce(
+        (closest, otherZ) => (Math.abs(z - otherZ) < Math.abs(z - closest) ? otherZ : closest),
+        otherZs[0]
+      );
+      const dir = z <= nearest ? -1 : 1;
+      z = nearest + dir * minSep;
+
+      if (z > zBounds.despawn - 3) z = nearest - minSep;
+      if (z < zBounds.spawn - 5) z = nearest + minSep;
+    }
+
+    return z;
+  }
+
+  pickRespawnZ(assetId, excludeMesh = null) {
+    const zBounds = this.zBounds();
+    const z = zBounds.spawn - Math.random() * 4;
+    return this.resolveSeparatedZ(assetId, z, excludeMesh);
   }
 
   tunnelSettings() {
@@ -559,16 +653,14 @@ export class AssetField {
       const targetY =
         tunnelPos.y + Math.cos(t * m.sway.freq * 0.85 + m.phase) * m.sway.amp * 4.5 * tunnelPos.swayMul;
       const targetZ = m.z;
-      const targetRot = m.baseRot + Math.sin(t * 0.15 + m.phase) * 0.04;
 
       const f = m.lag;
       d.x = lerp(d.x, targetX, f);
       d.y = lerp(d.y, targetY, f);
       d.z = targetZ;
-      d.rot = lerp(d.rot, targetRot, f * 0.6);
 
       mesh.position.set(d.x, d.y, d.z);
-      mesh.rotation.z = d.rot;
+      applyFloatRotation(mesh, m, t, speedMul, dt);
       mesh.renderOrder = -d.z;
       const depthScale =
         depthScaleAlongPath(m.z, m.spawnZ, m.scaleSpawn, m.scaleFront, zBounds) *

@@ -1,7 +1,9 @@
 import { STORY_INTRO } from "../config.js";
 import { CRTBlend } from "./crt-blend.js";
 
-const HANDOFF_START = 0.9;
+function easeOutCubic(t) {
+  return 1 - Math.pow(1 - t, 3);
+}
 
 export class StoryText {
   constructor(elA, elB, canvasEl, beats) {
@@ -9,22 +11,36 @@ export class StoryText {
     this.outEl = elA;
     this.inEl = elB;
     this.canvasEl = canvasEl;
+    this.stackEl = elA.closest(".story-text-stack");
+    this.stageEl = elA.closest(".story-stage");
+    this.maxStackHeight = 0;
+    this.stageFixed = false;
     this.outBeat = -1;
     this.inBeat = -1;
     this.settledBeat = -1;
+    this.warpActive = false;
+    this.canvasSettled = false;
     this.introPlayed = false;
     this.introPlaying = false;
-    this.introTimer = null;
+    this.introRaf = null;
+    this.introStartedAt = null;
     this.reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     this.useWarp = !this.reducedMotion;
     this.crt = this.useWarp ? new CRTBlend(canvasEl, elA) : null;
 
-    this.showSettled(0);
-
     if (this.crt) {
       requestAnimationFrame(() => {
-        this.crt.buildTextures(beats).then(() => this.hideWarp()).catch(console.error);
+        try {
+          this.crt.buildTextures(beats);
+          this.installFixedStage();
+          this.showSettled(0);
+        } catch (err) {
+          console.error(err);
+          this.showSettled(0);
+        }
       });
+    } else {
+      this.showSettled(0);
     }
   }
 
@@ -33,6 +49,7 @@ export class StoryText {
     if (!beat) return;
     el.innerHTML = beat.html;
     el.className = "story-text";
+    this.positionBeatEl(el, index);
   }
 
   ensureBeat(el, key, index) {
@@ -46,115 +63,194 @@ export class StoryText {
     el.style.opacity = String(value);
   }
 
-  wrapIntroWords(html) {
-    let wordIndex = 0;
-    return html
-      .split(/(\s+)/)
-      .map((part) => {
-        if (/^\s+$/.test(part)) return part;
-        const delay = wordIndex * STORY_INTRO.wordStaggerMs;
-        wordIndex += 1;
-        return `<span class="story-text__word" style="--word-delay:${delay}ms">${part}</span>`;
-      })
-      .join("");
+  introDurationMs() {
+    return STORY_INTRO.baseDelayMs + STORY_INTRO.durationMs;
   }
 
-  introDurationMs(wordCount) {
-    return STORY_INTRO.baseDelayMs + wordCount * STORY_INTRO.wordStaggerMs + STORY_INTRO.durationMs;
-  }
-
-  clearIntroTimer() {
-    if (this.introTimer != null) {
-      clearTimeout(this.introTimer);
-      this.introTimer = null;
+  clearIntroAnimation() {
+    if (this.introRaf != null) {
+      cancelAnimationFrame(this.introRaf);
+      this.introRaf = null;
     }
+    this.introStartedAt = null;
+    this.introPlaying = false;
   }
 
   finishIntroEarly() {
     if (this.introPlayed) return;
-    this.clearIntroTimer();
+    this.clearIntroAnimation();
     this.introPlayed = true;
-    this.introPlaying = false;
-    this.outEl.classList.remove("story-text--intro-enter", "story-text--intro-reduced");
-    this.outEl.style.transition = "";
-    this.ensureBeat(this.outEl, "outBeat", 0);
-    this.setOpacity(this.outEl, 1);
+    if (this.crt) {
+      this.showSettledCanvas(0);
+    } else {
+      this.ensureBeat(this.outEl, "outBeat", 0);
+      this.outEl.style.visibility = "visible";
+      this.setOpacity(this.outEl, 1);
+    }
   }
 
-  playIntro(el) {
+  playCanvasIntro() {
+    if (this.introPlaying || this.introPlayed || !this.crt) return;
+    this.introPlaying = true;
+    this.introStartedAt = performance.now();
+    this.ensureBeat(this.outEl, "outBeat", 0);
+    this.hideDomText();
+    this.showWarp();
+    this.warpActive = true;
+    this.canvasSettled = false;
+
+    const tick = (now) => {
+      const elapsed = now - this.introStartedAt;
+      const linear = Math.min(1, elapsed / this.introDurationMs());
+      const settle = easeOutCubic(linear);
+      this.crt.introSettleBeat(0, settle);
+
+      if (linear < 1) {
+        this.introRaf = requestAnimationFrame(tick);
+        return;
+      }
+
+      this.clearIntroAnimation();
+      this.introPlayed = true;
+      this.showSettledCanvas(0);
+    };
+
+    this.introRaf = requestAnimationFrame(tick);
+  }
+
+  playReducedIntro(el) {
     if (this.introPlaying || this.introPlayed) return;
     this.introPlaying = true;
-    this.clearIntroTimer();
     const beat = this.beats[0];
     if (!beat) return;
 
     this.outBeat = 0;
-    el.className = "story-text story-text--intro-enter";
-    el.style.setProperty("--intro-drift", `${STORY_INTRO.driftY}px`);
-    el.style.setProperty("--intro-scale-from", String(STORY_INTRO.scaleFrom));
-    el.style.setProperty("--intro-base-delay", `${STORY_INTRO.baseDelayMs}ms`);
-    el.style.setProperty("--intro-duration", `${STORY_INTRO.durationMs}ms`);
+    el.className = "story-text story-text--intro-reduced";
+    el.innerHTML = beat.html;
+    this.positionBeatEl(el, 0);
+    el.style.visibility = "visible";
+    this.setOpacity(el, 1);
+    this.introPlayed = true;
+    this.introPlaying = false;
+  }
 
-    if (this.reducedMotion) {
-      el.innerHTML = beat.html;
-      el.classList.add("story-text--intro-reduced");
-      this.setOpacity(el, 1);
-      this.introPlayed = true;
-      this.introPlaying = false;
-      return;
+  getBlockHeight(beatIndex) {
+    const blockH = this.crt?.textures?.[beatIndex]?.blockH;
+    if (blockH) return blockH;
+
+    const beat = this.beats[beatIndex];
+    if (!beat) return 0;
+
+    const measure = document.getElementById("story-text-measure");
+    if (!measure) return 0;
+    measure.innerHTML = beat.html;
+    measure.className = "story-text";
+    return measure.offsetHeight;
+  }
+
+  refreshMaxStackHeight() {
+    if (this.crt?.stageHeight) {
+      this.maxStackHeight = this.crt.stageHeight;
+      return this.maxStackHeight;
     }
 
-    const plain = beat.html.replace(/<[^>]+>/g, "");
-    const words = plain.trim().split(/\s+/).filter(Boolean);
-    el.innerHTML = this.wrapIntroWords(plain);
-    this.setOpacity(el, 1);
+    if (this.crt?.textures?.length) {
+      this.maxStackHeight = Math.max(
+        ...this.crt.textures.map((texture) => texture.stageH || texture.blockH || 0),
+        1
+      );
+      return this.maxStackHeight;
+    }
 
-    this.introTimer = window.setTimeout(() => {
-      this.introTimer = null;
-      this.introPlayed = true;
-      this.introPlaying = false;
-      el.classList.remove("story-text--intro-enter");
-      el.innerHTML = beat.html;
-    }, this.introDurationMs(words.length));
+    this.maxStackHeight = Math.max(...this.beats.map((_, index) => this.getBlockHeight(index)), 1);
+    return this.maxStackHeight;
+  }
+
+  installFixedStage() {
+    this.refreshMaxStackHeight();
+    if (!this.maxStackHeight || !this.stackEl) return;
+
+    const heightPx = `${Math.ceil(this.maxStackHeight)}px`;
+    this.stackEl.style.setProperty("--story-text-stack-h", heightPx);
+    this.stageEl?.style.setProperty("--story-text-stack-h", heightPx);
+    this.crt?.setStageHeight(this.maxStackHeight);
+    this.stageFixed = true;
+  }
+
+  positionBeatEl(el, beatIndex) {
+    if (!this.maxStackHeight) return;
+    const blockH = this.getBlockHeight(beatIndex);
+    const top = Math.max(0, (this.maxStackHeight - blockH) / 2);
+    el.style.top = `${top}px`;
   }
 
   hideWarp() {
     if (!this.canvasEl) return;
+    this.warpActive = false;
+    this.canvasSettled = false;
     this.canvasEl.style.opacity = "0";
     this.canvasEl.style.visibility = "hidden";
   }
 
-  showWarp(opacity = 1) {
+  showWarp() {
     if (!this.canvasEl) return;
-    this.canvasEl.style.opacity = String(opacity);
+    this.canvasEl.style.opacity = "1";
     this.canvasEl.style.visibility = "visible";
   }
 
-  showSettled(beat) {
-    if (beat === 0 && !this.introPlayed) {
-      this.playIntro(this.outEl);
-    } else {
-      this.ensureBeat(this.outEl, "outBeat", beat);
-      this.outEl.classList.remove("story-text--intro-enter", "story-text--intro-reduced");
-      this.setOpacity(this.outEl, 1);
-    }
-
+  hideDomText() {
+    this.setOpacity(this.outEl, 0);
     this.setOpacity(this.inEl, 0);
-    this.inBeat = -1;
-    this.settledBeat = beat;
-    this.hideWarp();
+    this.outEl.style.visibility = "hidden";
+    this.inEl.style.visibility = "hidden";
   }
 
-  finalizeTransition(to) {
-    const prevOut = this.outEl;
-    this.outEl = this.inEl;
-    this.inEl = prevOut;
-    this.outBeat = this.inBeat;
+  revealDomText(beat) {
+    this.ensureBeat(this.outEl, "outBeat", beat);
+    this.outBeat = beat;
     this.inBeat = -1;
-    this.settledBeat = to;
+    this.settledBeat = beat;
+    this.outEl.classList.remove("story-text--intro-reduced");
+    this.outEl.style.visibility = "visible";
     this.setOpacity(this.outEl, 1);
     this.setOpacity(this.inEl, 0);
+    this.inEl.style.visibility = "hidden";
+  }
+
+  showSettledCanvas(beat) {
+    this.ensureBeat(this.outEl, "outBeat", beat);
+    this.outBeat = beat;
+    this.inBeat = -1;
+    this.settledBeat = beat;
+    this.hideDomText();
+    this.showWarp();
+    this.crt.showSettledBeat(beat);
+    this.warpActive = false;
+    this.canvasSettled = true;
+  }
+
+  showSettled(beat) {
+    if (!this.stageFixed && this.crt?.textures?.length) {
+      this.installFixedStage();
+    }
+
+    if (beat === 0 && !this.introPlayed) {
+      if (this.crt) {
+        this.playCanvasIntro();
+      } else {
+        this.hideWarp();
+        this.playReducedIntro(this.outEl);
+      }
+      return;
+    }
+
+    if (this.crt) {
+      this.showSettledCanvas(beat);
+      return;
+    }
+
     this.hideWarp();
+    this.revealDomText(beat);
   }
 
   setBeatState(fromIndex, progress) {
@@ -167,39 +263,31 @@ export class StoryText {
     }
 
     if (from >= this.beats.length - 1 || t < 0.02) {
-      this.showSettled(from);
+      if (this.settledBeat !== from || !this.canvasSettled) {
+        this.showSettled(from);
+      }
       return;
+    }
+
+    if (!this.stageFixed && this.crt?.textures?.length) {
+      this.installFixedStage();
     }
 
     if (!this.crt) {
       this.ensureBeat(this.outEl, "outBeat", from);
       this.ensureBeat(this.inEl, "inBeat", to);
+      this.inEl.style.visibility = "visible";
+      this.outEl.style.visibility = "visible";
       this.setOpacity(this.outEl, 1 - t);
       this.setOpacity(this.inEl, t);
-
-      if (t > 0.999 && this.settledBeat !== to) {
-        this.finalizeTransition(to);
-      }
       return;
     }
 
-    this.ensureBeat(this.outEl, "outBeat", from);
-    this.ensureBeat(this.inEl, "inBeat", to);
-
-    if (t > 0.999 && this.settledBeat !== to) {
-      this.finalizeTransition(to);
-      return;
-    }
-
-    if (t >= HANDOFF_START) {
-      const handoff = (t - HANDOFF_START) / (1 - HANDOFF_START);
-      this.setOpacity(this.outEl, 0);
-      this.setOpacity(this.inEl, handoff);
-      this.showWarp(1 - handoff);
-    } else {
-      this.setOpacity(this.outEl, 0);
-      this.setOpacity(this.inEl, 0);
-      this.showWarp(1);
+    if (!this.warpActive) {
+      this.hideDomText();
+      this.showWarp();
+      this.warpActive = true;
+      this.canvasSettled = false;
     }
 
     this.crt.blend(from, to, t);
@@ -208,15 +296,19 @@ export class StoryText {
   resize() {
     if (!this.crt) return;
     this.crt.resize();
-    this.crt.buildTextures(this.beats).then(() => {
+    try {
+      this.crt.buildTextures(this.beats);
+      this.installFixedStage();
       if (this.settledBeat >= 0) {
         this.showSettled(this.settledBeat);
       }
-    }).catch(console.error);
+    } catch (err) {
+      console.error(err);
+    }
   }
 
   destroy() {
-    this.clearIntroTimer();
+    this.clearIntroAnimation();
     this.crt?.destroy();
   }
 }

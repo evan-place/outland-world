@@ -1,0 +1,102 @@
+{
+  "beats": [
+    {
+      "id": "beat-01",
+      "items": [
+        {
+          "assetId": "terrain-purple",
+          "anchor": { "x": 0.1, "y": 0.38 },
+          "rotation": 94,
+          "z": -1.8,
+          "scale": 1.05
+        },
+        {
+          "assetId": "world-builders",
+          "anchor": { "x": 0.84, "y": 0.06 },
+          "rotation": 180,
+          "z": -0.4,
+          "scale": 1
+        },
+        {
+          "assetId": "lands-panorama",
+          "anchor": { "x": 0.7, "y": 0.12 },
+          "rotation": 13,
+          "z": 0.2,
+          "scale": 0.95
+        },
+        {
+          "assetId": "galaxy-multiply",
+          "anchor": { "x": 0.2, "y": 0.8 },
+          "rotation": -123,
+          "z": 1.4,
+          "scale": 1
+        },
+        {
+          "assetId": "doc-1",
+          "anchor": { "x": 0.76, "y": 0.88 },
+          "rotation": 6,
+          "z": 0.8,
+          "scale": 0.98
+        },
+        {
+          "assetId": "image-portrait",
+          "anchor": { "x": 0.9, "y": 0.58 },
+          "rotation": 0,
+          "z": 0.5,
+          "scale": 1.1,
+          "blendMode": "color-dodge"
+        }
+      ]
+    },
+    {
+      "id": "beat-02",
+      "items": [
+        {
+          "assetId": "image-portrait",
+          "anchor": { "x": 0.16, "y": 0.08 },
+          "rotation": -105,
+          "z": -0.6,
+          "scale": 0.85,
+          "blendMode": "lighten"
+        },
+        {
+          "assetId": "doc-1",
+          "anchor": { "x": 0.18, "y": 0.74 },
+          "rotation": -21,
+          "z": 1.2,
+          "scale": 1
+        },
+        {
+          "assetId": "group-collage-a",
+          "anchor": { "x": 0.15, "y": 0.42 },
+          "rotation": 10,
+          "z": 0,
+          "scale": 0.92
+        },
+        {
+          "assetId": "vector-ring",
+          "anchor": { "x": 0.78, "y": 0.78 },
+          "rotation": 0,
+          "z": 0.6,
+          "scale": 1.15
+        },
+        {
+          "assetId": "vector-ring",
+          "anchor": { "x": 0.88, "y": 0.14 },
+          "rotation": -8,
+          "z": -0.3,
+          "scale": 0.55
+        },
+        {
+          "assetId": "texture-studies",
+          "anchor": { "x": 0.93, "y": 0.32 },
+          "rotation": 28,
+          "z": 0.3,
+          "scale": 0.88,
+          "blendMode": "screen"
+        }
+      ]
+    }
+  ],
+  "fallbackPattern": ["beat-01", "beat-02"]
+}

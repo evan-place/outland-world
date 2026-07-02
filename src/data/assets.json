@@ -27,7 +27,10 @@
       "width": 600,
       "mobileWidth": 274,
       "heightRatio": 0.4
-    }
+    },
+    "separationGroups": [
+      { "ids": ["doc-1", "doc-2"], "minZ": 12 }
+    ]
   },
   "assets": [
     {
@@ -94,22 +97,6 @@
       },
       "layout": { "lane": "top-right", "anchor": { "x": 0.78, "y": 0.12 }, "rotation": 8 },
       "motion": { "speed": 0.26, "sway": { "amp": 0.03, "freq": 0.24 }, "rotSpeed": 0.06 }
-    },
-    {
-      "id": "orbit-graphic",
-      "src": "/assets/orbit-graphic.png",
-      "alt": "Orbit diagram",
-      "blendMode": "color-dodge",
-      "opacity": 0.92,
-      "instances": 2,
-      "size": {
-        "maxWidth": 464,
-        "scale": 1,
-        "scaleJitter": 0.1,
-        "depthScale": { "spawn": 0.09, "front": 1.6 }
-      },
-      "layout": { "lane": "right", "anchor": { "x": 0.88, "y": 0.58 }, "rotation": 0 },
-      "motion": { "speed": 0.3, "sway": { "amp": 0.045, "freq": 0.19 }, "rotSpeed": 0.03 }
     },
     {
       "id": "rectangle-square",
@@ -192,10 +179,10 @@
       "motion": { "speed": 0.25, "sway": { "amp": 0.035, "freq": 0.16 }, "rotSpeed": 0.02 }
     },
     {
-      "id": "galaxy",
-      "src": "/assets/galaxy.png",
+      "id": "galaxy-multiply",
+      "src": "/assets/galaxy-multiply.png",
       "alt": "Galaxy",
-      "blendMode": "lighten",
+      "blendMode": "multiply",
       "opacity": 0.88,
       "instances": 2,
       "size": {
@@ -242,26 +229,8 @@
       "motion": { "speed": 0.23, "sway": { "amp": 0.042, "freq": 0.19 }, "rotSpeed": 0.05 }
     },
     {
-      "id": "rectangle-tall",
-      "src": "/assets/rectangle-346256864.png",
-      "alt": "Tall collage panel",
-      "blendMode": "normal",
-      "opacity": 0.96,
-      "instances": 2,
-      "size": {
-        "maxWidth": 480,
-        "maxHeight": 720,
-        "scale": 0.85,
-        "scaleJitter": 0.08,
-        "depthScale": { "spawn": 0.07, "front": 1.95 }
-      },
-      "sizeMobile": { "maxWidth": 200, "scale": 0.42, "depthScale": { "spawn": 0.12, "front": 1.15 } },
-      "layout": { "lane": "bottom-right", "anchor": { "x": 0.88, "y": 0.9 }, "rotation": 4 },
-      "motion": { "speed": 0.21, "sway": { "amp": 0.038, "freq": 0.14 }, "rotSpeed": 0.04 }
-    },
-    {
-      "id": "paper-dept",
-      "src": "/assets/paper-dept.png",
+      "id": "doc-1",
+      "src": "/assets/doc-1.png",
       "alt": "Dept. of Imagination form",
       "blendMode": "normal",
       "opacity": 1,
@@ -276,6 +245,24 @@
       "sizeMobile": { "maxWidth": 220, "scale": 0.45, "depthScale": { "spawn": 0.12, "front": 1.2 } },
       "layout": { "lane": "bottom-right", "anchor": { "x": 0.82, "y": 0.92 }, "rotation": 5.86 },
       "motion": { "speed": 0.2, "sway": { "amp": 0.04, "freq": 0.15 }, "rotSpeed": 0.04 }
+    },
+    {
+      "id": "doc-2",
+      "src": "/assets/doc-2.png",
+      "alt": "Document collage",
+      "blendMode": "normal",
+      "opacity": 0.96,
+      "instances": 2,
+      "size": {
+        "maxWidth": 480,
+        "maxHeight": 720,
+        "scale": 0.85,
+        "scaleJitter": 0.08,
+        "depthScale": { "spawn": 0.07, "front": 1.95 }
+      },
+      "sizeMobile": { "maxWidth": 200, "scale": 0.42, "depthScale": { "spawn": 0.12, "front": 1.15 } },
+      "layout": { "lane": "bottom-left", "anchor": { "x": 0.14, "y": 0.9 }, "rotation": 4 },
+      "motion": { "speed": 0.21, "sway": { "amp": 0.038, "freq": 0.14 }, "rotSpeed": 0.04 }
     }
   ]
 }
