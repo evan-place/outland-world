@@ -62,18 +62,18 @@ export const BEAT_ASSETS = {
   depthScaleFar: 0.06,
   depthScaleNear: 1,
   /** Rush from depth early, long eased settle — single smooth curve (no kink). */
-  incomingRushPower: 1.15,
-  incomingSettlePower: 3.8,
-  surfaceLagPower: 0.92,
+  incomingRushPower: 1.05,
+  incomingSettlePower: 5.2,
+  surfaceLagPower: 1.18,
   /** First-load intro — slower than beat transitions. */
-  introDurationMs: 2400,
+  introDurationMs: 3000,
   /** Beat-to-beat incoming warp (wall clock, continues after text settles). */
-  incomingDurationMs: 2800,
+  incomingDurationMs: 3600,
   /** Outgoing / retreat duration (wall clock, same transition clock). */
-  exitDurationMs: 1000,
-  exitEasePower: 2.4,
-  exitOpacityFadeStart: 0.45,
-  exitFadePower: 2.8,
+  exitDurationMs: 1650,
+  exitEasePower: 1.55,
+  exitOpacityFadeStart: 0.62,
+  exitFadePower: 2.4,
   scrollEasePower: 3,
   transitionKick: 0.12,
   /** Cursor parallax on settled / transitioning assets (closer Z moves more). */

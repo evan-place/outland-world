@@ -29,7 +29,8 @@ function easeIncoming(t) {
 
 function easeOutgoing(t) {
   const x = clamp01(t);
-  return 1 - Math.pow(1 - x, BEAT_ASSETS.exitEasePower);
+  const smooth = x * x * (3 - 2 * x);
+  return Math.pow(smooth, BEAT_ASSETS.exitEasePower);
 }
 
 function easeOutgoingOpacity(t) {

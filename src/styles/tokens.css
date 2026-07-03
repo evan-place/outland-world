@@ -11,7 +11,7 @@
   --story-max-width: 600px;
   --safe-zone-width: 600px;
   --safe-zone-height: 40vh;
-  --rail-width: 118px;
+  --rail-width: 132px;
 
   --chrome-logo-top: 16px;
   --chrome-logo-height: 45px;
@@ -35,7 +35,7 @@
     --safe-zone-width: 274px;
     --chrome-logo-top: 70px;
     --chrome-logo-height: 31px;
-    --chrome-mobile-rail-height: 124px;
+    --chrome-mobile-rail-height: 158px;
     --chrome-cta-gap-above-rail: 32px;
     --chrome-cta-bottom: calc(
       var(--chrome-mobile-rail-height) + var(--chrome-cta-gap-above-rail)
