@@ -167,18 +167,6 @@ export function initStoryScroll({ beats, onBeatChange, getAssetSettleDelayMs }) 
     return phase === "settled" && performance.now() >= nextStepAllowedAt;
   };
 
-  const snapTransition = () => {
-    if (phase !== "transitioning") return;
-    transitionTween?.kill();
-    transitionTween = null;
-    currentBeat = lastTransitionT > 0.5 ? transitionTargetBeat : transitionFromBeat;
-    phase = "settled";
-    nextStepAllowedAt = 0;
-    wheelAccum = 0;
-    applyState(currentBeat, 0);
-    scheduleAutoAdvance();
-  };
-
   const completeTransition = (fromBeat, targetBeat, startT, endT) => {
     transitionTween?.kill();
     transitionFromBeat = fromBeat;
@@ -211,18 +199,14 @@ export function initStoryScroll({ beats, onBeatChange, getAssetSettleDelayMs }) 
   };
 
   const beginTransition = (direction, { force = false } = {}) => {
-    const wasTransitioning = phase === "transitioning";
-    if (wasTransitioning) {
-      snapTransition();
-    } else if (!force && !canAcceptStep()) {
+    if (phase === "transitioning") return;
+
+    if (!force && !canAcceptStep()) {
       return;
     }
 
     const target = currentBeat + direction;
-    if (target < 0 || target >= beatCount) {
-      if (wasTransitioning) scheduleAutoAdvance();
-      return;
-    }
+    if (target < 0 || target >= beatCount) return;
 
     phase = "transitioning";
     clearAutoTimer();
@@ -252,20 +236,7 @@ export function initStoryScroll({ beats, onBeatChange, getAssetSettleDelayMs }) 
 
     const now = performance.now();
 
-    if (phase === "transitioning") {
-      if (lastWheelAt && now - lastWheelAt > SCROLL.wheelAccumDecayMs) {
-        wheelAccum = 0;
-      }
-      lastWheelAt = now;
-      wheelAccum += event.deltaY;
-      if (Math.abs(wheelAccum) < SCROLL.wheelThreshold) return;
-      const direction = wheelAccum > 0 ? 1 : -1;
-      wheelAccum = 0;
-      beginTransition(direction);
-      return;
-    }
-
-    if (now < nextStepAllowedAt) {
+    if (phase === "transitioning" || now < nextStepAllowedAt) {
       wheelAccum = 0;
       return;
     }
@@ -286,16 +257,12 @@ export function initStoryScroll({ beats, onBeatChange, getAssetSettleDelayMs }) 
   };
 
   const onTouchStart = (event) => {
-    if (phase === "transitioning") {
-      touchStartY = event.touches[0]?.clientY ?? null;
-      return;
-    }
-    if (!canAcceptStep()) return;
+    if (phase === "transitioning" || !canAcceptStep()) return;
     touchStartY = event.touches[0]?.clientY ?? null;
   };
 
   const onTouchEnd = (event) => {
-    if (touchStartY === null) return;
+    if (touchStartY === null || phase === "transitioning" || !canAcceptStep()) return;
 
     const endY = event.changedTouches[0]?.clientY;
     if (endY == null) return;
@@ -304,27 +271,18 @@ export function initStoryScroll({ beats, onBeatChange, getAssetSettleDelayMs }) 
     touchStartY = null;
 
     if (Math.abs(delta) < SCROLL.swipeThreshold) return;
-
-    if (phase === "transitioning") {
-      beginTransition(delta > 0 ? 1 : -1);
-      return;
-    }
-
-    if (!canAcceptStep()) return;
     beginTransition(delta > 0 ? 1 : -1);
   };
 
   const onKeyDown = (event) => {
+    if (!canAcceptStep()) return;
+
     if (event.key === "ArrowDown" || event.key === "PageDown" || event.key === " ") {
       event.preventDefault();
-      if (phase === "transitioning" || canAcceptStep()) {
-        beginTransition(1);
-      }
+      beginTransition(1);
     } else if (event.key === "ArrowUp" || event.key === "PageUp") {
       event.preventDefault();
-      if (phase === "transitioning" || canAcceptStep()) {
-        beginTransition(-1);
-      }
+      beginTransition(-1);
     }
   };
 
@@ -339,7 +297,7 @@ export function initStoryScroll({ beats, onBeatChange, getAssetSettleDelayMs }) 
   return {
     getCurrentBeat: () => currentBeat,
     goToBeat: (index) => {
-      if (index === currentBeat) return;
+      if (index === currentBeat || !canAcceptStep()) return;
       beginTransition(index > currentBeat ? 1 : -1);
     },
     destroy() {

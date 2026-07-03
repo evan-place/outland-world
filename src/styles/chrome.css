@@ -17,8 +17,8 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 43px;
-  height: 43px;
+  width: 44px;
+  height: 44px;
   padding: 0;
   margin: 0;
   border: none;
@@ -26,6 +26,8 @@
   background: transparent;
   cursor: pointer;
   pointer-events: auto;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
   mix-blend-mode: exclusion;
   color: var(--system-grey);
 }
@@ -34,7 +36,7 @@
   display: block;
   width: 43px;
   height: 43px;
-  overflow: visible;
+  overflow: hidden;
 }
 
 .chrome-audio__ring,
@@ -63,12 +65,28 @@
   outline-offset: 4px;
 }
 
-.chrome-audio:hover .chrome-audio__ring,
-.chrome-audio:hover .chrome-audio__wave,
+@media (hover: hover) and (pointer: fine) {
+  .chrome-audio:hover .chrome-audio__ring,
+  .chrome-audio:hover .chrome-audio__wave,
+  .chrome-audio.chrome-audio--hover .chrome-audio__ring,
+  .chrome-audio.chrome-audio--hover .chrome-audio__wave {
+    color: var(--monorail-white);
+    stroke-width: 2;
+  }
+}
+
 .chrome-audio:focus-visible .chrome-audio__ring,
 .chrome-audio:focus-visible .chrome-audio__wave {
   color: var(--monorail-white);
   stroke-width: 2;
+}
+
+@media (hover: none) {
+  .chrome-audio:active .chrome-audio__ring,
+  .chrome-audio:active .chrome-audio__wave {
+    color: var(--monorail-white);
+    stroke-width: 2;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -328,5 +346,19 @@
 
   .chrome-cta {
     bottom: var(--chrome-cta-bottom);
+    gap: 8px;
+    max-width: calc(100vw - 32px);
+    padding: 0 16px;
+    box-sizing: border-box;
+  }
+
+  .chrome-audio {
+    width: 44px;
+    height: 44px;
+  }
+
+  .chrome-audio__svg {
+    width: 43px;
+    height: 43px;
   }
 }

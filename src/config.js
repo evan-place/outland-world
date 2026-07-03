@@ -13,8 +13,8 @@ export const STYLE_PRESETS = {
 };
 
 export const SCROLL = {
-  transitionDuration: 1.2,
-  transitionMinDuration: 0.45,
+  transitionDuration: 1.5,
+  transitionMinDuration: 0.55,
   transitionKick: 0.12,
   wheelThreshold: 30,
   wheelAccumDecayMs: 70,
@@ -26,18 +26,18 @@ export const SCROLL = {
 export const AUTO_PLAY = {
   enabled: true,
   /** Dwell on beat 0 before first auto-advance (covers text intro). */
-  introDwellMs: 2200,
-  beatDwellMs: 2200,
-  beatDwellLastMs: 2800,
+  introDwellMs: 3200,
+  beatDwellMs: 3400,
+  beatDwellLastMs: 4200,
   /** Matches typical beat transition length (ms). */
-  transitionMs: 1200,
-  reducedIntroDwellMs: 1000,
-  reducedBeatDwellMs: 1400,
-  reducedBeatDwellLastMs: 2200,
+  transitionMs: 1500,
+  reducedIntroDwellMs: 1400,
+  reducedBeatDwellMs: 2000,
+  reducedBeatDwellLastMs: 2800,
   reducedTransitionMs: 280,
 };
 
-/** Reserved for future CRT / warp transitions */
+/** CRT text transitions — warp blend tuning. */
 export const STORY_TRANSITION = {
   easePower: 1.35,
   mixEdgeLow: 0.08,
@@ -76,6 +76,18 @@ export const BEAT_ASSETS = {
   exitFadePower: 2.8,
   scrollEasePower: 3,
   transitionKick: 0.12,
+  /** Cursor parallax on settled / transitioning assets (closer Z moves more). */
+  parallax: {
+    enabled: true,
+    maxX: 0.42,
+    maxY: 0.28,
+    zMin: -2,
+    zMax: 1.5,
+    strengthFar: 0.32,
+    strengthNear: 1,
+    smooth: 0.11,
+    mobileScale: 0.6,
+  },
 };
 
 export const ASSET_FIELD = {

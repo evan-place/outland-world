@@ -1,12 +1,13 @@
 const VIEW_SIZE = 43;
 const WAVE_CY = 21.5;
-const WAVE_AMP = 8.43;
-const WAVE_X0 = 0.5;
-const WAVE_X1 = 42.5;
+const WAVE_AMP = 7.35;
+const WAVE_X0 = 3;
+const WAVE_X1 = 40;
 const WAVE_STEPS = 128;
 const BASE_FREQ = 1;
 const HOVER_FREQ = 1.48;
 const PHASE_SPEED = 0.045;
+const CLIP_RADIUS = 19.6;
 
 function buildWavePath(phase, frequency) {
   const span = WAVE_X1 - WAVE_X0;
@@ -24,15 +25,28 @@ export function mountAudioToggle(button) {
   if (!button) return { destroy() {} };
 
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const canHover = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
   let svg = button.querySelector(".chrome-audio__svg");
 
   if (!svg) {
+    const clipId = `audio-wave-clip-${Math.random().toString(36).slice(2, 9)}`;
+
     svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svg.setAttribute("class", "chrome-audio__svg");
     svg.setAttribute("viewBox", `0 0 ${VIEW_SIZE} ${VIEW_SIZE}`);
     svg.setAttribute("width", String(VIEW_SIZE));
     svg.setAttribute("height", String(VIEW_SIZE));
     svg.setAttribute("aria-hidden", "true");
+
+    const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+    const clipPath = document.createElementNS("http://www.w3.org/2000/svg", "clipPath");
+    clipPath.setAttribute("id", clipId);
+    const clipCircle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    clipCircle.setAttribute("cx", "21.5");
+    clipCircle.setAttribute("cy", "21.5");
+    clipCircle.setAttribute("r", String(CLIP_RADIUS));
+    clipPath.appendChild(clipCircle);
+    defs.appendChild(clipPath);
 
     const ring = document.createElementNS("http://www.w3.org/2000/svg", "rect");
     ring.setAttribute("class", "chrome-audio__ring");
@@ -42,11 +56,15 @@ export function mountAudioToggle(button) {
     ring.setAttribute("height", "42");
     ring.setAttribute("rx", "21");
 
+    const waveWrap = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    waveWrap.setAttribute("clip-path", `url(#${clipId})`);
+
     const wave = document.createElementNS("http://www.w3.org/2000/svg", "path");
     wave.setAttribute("class", "chrome-audio__wave");
     wave.setAttribute("fill", "none");
 
-    svg.append(ring, wave);
+    waveWrap.appendChild(wave);
+    svg.append(defs, ring, waveWrap);
     button.replaceChildren(svg);
   }
 
@@ -70,19 +88,38 @@ export function mountAudioToggle(button) {
     }
   };
 
-  const onEnter = () => {
-    targetFrequency = HOVER_FREQ;
+  const setHover = (active) => {
+    button.classList.toggle("chrome-audio--hover", active);
+    targetFrequency = active ? HOVER_FREQ : BASE_FREQ;
   };
 
-  const onLeave = () => {
-    targetFrequency = BASE_FREQ;
+  const onPointerEnter = () => {
+    if (canHover) setHover(true);
+  };
+
+  const onPointerLeave = () => {
+    if (canHover) setHover(false);
+  };
+
+  const onFocus = () => {
+    requestAnimationFrame(() => {
+      if (button.matches(":focus-visible")) {
+        setHover(true);
+      }
+    });
+  };
+
+  const onBlur = () => {
+    if (!canHover || !button.matches(":hover")) {
+      setHover(false);
+    }
   };
 
   paint();
-  button.addEventListener("mouseenter", onEnter);
-  button.addEventListener("mouseleave", onLeave);
-  button.addEventListener("focus", onEnter);
-  button.addEventListener("blur", onLeave);
+  button.addEventListener("pointerenter", onPointerEnter);
+  button.addEventListener("pointerleave", onPointerLeave);
+  button.addEventListener("focus", onFocus);
+  button.addEventListener("blur", onBlur);
 
   if (!reducedMotion) {
     raf = requestAnimationFrame(tick);
@@ -91,10 +128,11 @@ export function mountAudioToggle(button) {
   return {
     destroy() {
       if (raf != null) cancelAnimationFrame(raf);
-      button.removeEventListener("mouseenter", onEnter);
-      button.removeEventListener("mouseleave", onLeave);
-      button.removeEventListener("focus", onEnter);
-      button.removeEventListener("blur", onLeave);
+      button.classList.remove("chrome-audio--hover");
+      button.removeEventListener("pointerenter", onPointerEnter);
+      button.removeEventListener("pointerleave", onPointerLeave);
+      button.removeEventListener("focus", onFocus);
+      button.removeEventListener("blur", onBlur);
     },
   };
 }

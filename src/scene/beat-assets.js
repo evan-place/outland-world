@@ -179,6 +179,9 @@ export class BeatAssets {
     this.introPlayed = false;
     this.introStartTime = null;
     this.assetTransition = null;
+    this.pointerTarget = { x: 0, y: 0 };
+    this.pointer = { x: 0, y: 0 };
+    this.isMobile = window.innerWidth < 768;
 
     for (const entry of assetsManifest.assets || []) {
       this.entryById.set(entry.id, entry);
@@ -195,10 +198,68 @@ export class BeatAssets {
     container.appendChild(this.renderer.domElement);
 
     this._onResize = () => this.resize();
+    this._onPointerMove = (event) => this.setPointerTarget(event.clientX, event.clientY);
+    this._onPointerLeave = () => {
+      this.pointerTarget.x = 0;
+      this.pointerTarget.y = 0;
+    };
     window.addEventListener("resize", this._onResize);
+    window.addEventListener("pointermove", this._onPointerMove, { passive: true });
+    window.addEventListener("pointerleave", this._onPointerLeave);
     this.resize();
 
     this.loadPromise = this.load();
+  }
+
+  setPointerTarget(clientX, clientY) {
+    const w = window.innerWidth || 1;
+    const h = window.innerHeight || 1;
+    this.pointerTarget.x = (clientX / w) * 2 - 1;
+    this.pointerTarget.y = -((clientY / h) * 2 - 1);
+  }
+
+  parallaxStrength(z) {
+    const cfg = BEAT_ASSETS.parallax;
+    if (!cfg?.enabled) return 0;
+    const span = Math.max(0.001, cfg.zMax - cfg.zMin);
+    const depthMix = clamp01((z - cfg.zMin) / span);
+    return lerp(cfg.strengthFar, cfg.strengthNear, depthMix);
+  }
+
+  storeBasePosition(mesh) {
+    if (!mesh.userData.basePosition) {
+      mesh.userData.basePosition = new THREE.Vector3();
+    }
+    mesh.userData.basePosition.copy(mesh.position);
+  }
+
+  smoothPointer() {
+    const cfg = BEAT_ASSETS.parallax;
+    const smooth = cfg?.smooth ?? 0.1;
+    this.pointer.x += (this.pointerTarget.x - this.pointer.x) * smooth;
+    this.pointer.y += (this.pointerTarget.y - this.pointer.y) * smooth;
+  }
+
+  applyParallax() {
+    const cfg = BEAT_ASSETS.parallax;
+    if (this.reducedMotion || !cfg?.enabled) return;
+
+    this.smoothPointer();
+    const scale = this.isMobile ? cfg.mobileScale : 1;
+
+    for (const meshes of this.beatMeshes.values()) {
+      for (const mesh of meshes) {
+        if (!mesh.visible || !mesh.userData.basePosition) continue;
+
+        const base = mesh.userData.basePosition;
+        const strength = this.parallaxStrength(mesh.userData.layout.home.z);
+        mesh.position.set(
+          base.x + this.pointer.x * cfg.maxX * strength * scale,
+          base.y + this.pointer.y * cfg.maxY * strength * scale,
+          base.z
+        );
+      }
+    }
   }
 
   resolveBeatLayout(beatIndex) {
@@ -382,6 +443,7 @@ export class BeatAssets {
 
     if (role === "hidden") {
       mesh.visible = false;
+      mesh.userData.basePosition = null;
       return;
     }
 
@@ -396,6 +458,7 @@ export class BeatAssets {
           ? targetOpacity * (1 - leavingT)
           : targetOpacity * easeIncoming(incomingT);
       mesh.renderOrder = renderOrderForZ(home.z);
+      this.storeBasePosition(mesh);
       return;
     }
 
@@ -405,6 +468,7 @@ export class BeatAssets {
       mesh.scale.setScalar(home.scale);
       mesh.material.opacity = targetOpacity;
       mesh.renderOrder = renderOrderForZ(home.z);
+      this.storeBasePosition(mesh);
       return;
     }
 
@@ -421,6 +485,7 @@ export class BeatAssets {
       mesh.scale.setScalar(depthScaleAtProgress(depth, home.scale));
       mesh.material.opacity = targetOpacity * Math.min(1, depth * 0.96 + 0.04);
       mesh.renderOrder = renderOrderForZ(z);
+      this.storeBasePosition(mesh);
       return;
     }
 
@@ -439,6 +504,7 @@ export class BeatAssets {
       mesh.scale.setScalar(lerp(home.scale, cfg.exitScale, motion * 0.7));
       mesh.material.opacity = targetOpacity * fade;
       mesh.renderOrder = renderOrderForZ(z);
+      this.storeBasePosition(mesh);
     }
   }
 
@@ -543,6 +609,7 @@ export class BeatAssets {
   resize() {
     const w = this.container.clientWidth;
     const h = this.container.clientHeight;
+    this.isMobile = w < 768;
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(w, h);
@@ -581,11 +648,14 @@ export class BeatAssets {
       }
     }
 
+    this.applyParallax();
     this.renderer.render(this.scene, this.camera);
   }
 
   dispose() {
     window.removeEventListener("resize", this._onResize);
+    window.removeEventListener("pointermove", this._onPointerMove);
+    window.removeEventListener("pointerleave", this._onPointerLeave);
     for (const meshes of this.beatMeshes.values()) {
       for (const mesh of meshes) {
         mesh.geometry.dispose();
