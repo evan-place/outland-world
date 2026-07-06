@@ -1,9 +1,5 @@
-import { STORY_INTRO } from "../config.js";
+import { STORY_TRANSITION } from "../config.js";
 import { CRTBlend } from "./crt-blend.js";
-
-function easeOutCubic(t) {
-  return 1 - Math.pow(1 - t, 3);
-}
 
 export class StoryText {
   constructor(elA, elB, canvasEl, beats) {
@@ -64,7 +60,7 @@ export class StoryText {
   }
 
   introDurationMs() {
-    return STORY_INTRO.baseDelayMs + STORY_INTRO.durationMs;
+    return STORY_TRANSITION.beatDurationMs;
   }
 
   clearIntroAnimation() {
@@ -93,17 +89,17 @@ export class StoryText {
     if (this.introPlaying || this.introPlayed || !this.crt) return;
     this.introPlaying = true;
     this.introStartedAt = performance.now();
-    this.ensureBeat(this.outEl, "outBeat", 0);
     this.hideDomText();
     this.showWarp();
     this.warpActive = true;
     this.canvasSettled = false;
 
+    const duration = STORY_TRANSITION.beatDurationMs;
+
     const tick = (now) => {
-      const elapsed = now - this.introStartedAt;
-      const linear = Math.min(1, elapsed / this.introDurationMs());
-      const settle = easeOutCubic(linear);
-      this.crt.introSettleBeat(0, settle);
+      if (this.introStartedAt == null) return;
+      const linear = Math.min(1, (now - this.introStartedAt) / duration);
+      this.crt.blend(0, 0, linear, 1);
 
       if (linear < 1) {
         this.introRaf = requestAnimationFrame(tick);
@@ -115,6 +111,7 @@ export class StoryText {
       this.showSettledCanvas(0);
     };
 
+    this.crt.blend(0, 0, 0, 1);
     this.introRaf = requestAnimationFrame(tick);
   }
 
@@ -149,8 +146,8 @@ export class StoryText {
   }
 
   refreshMaxStackHeight() {
-    if (this.crt?.stageHeight) {
-      this.maxStackHeight = this.crt.stageHeight;
+    if (this.crt?.contentHeight) {
+      this.maxStackHeight = this.crt.contentHeight;
       return this.maxStackHeight;
     }
 
@@ -253,7 +250,7 @@ export class StoryText {
     this.revealDomText(beat);
   }
 
-  setBeatState(fromIndex, progress) {
+  setBeatState(fromIndex, progress, direction = 1) {
     const from = Math.max(0, Math.min(this.beats.length - 1, fromIndex));
     const to = Math.min(this.beats.length - 1, from + 1);
     const t = Math.max(0, Math.min(1, progress));
@@ -262,10 +259,14 @@ export class StoryText {
       this.finishIntroEarly();
     }
 
-    if (from >= this.beats.length - 1 || t < 0.02) {
+    if (from >= this.beats.length - 1 || (t < 0.02 && (from !== 0 || this.introPlayed))) {
       if (this.settledBeat !== from || !this.canvasSettled) {
         this.showSettled(from);
       }
+      return;
+    }
+
+    if (from === 0 && !this.introPlayed) {
       return;
     }
 
@@ -290,7 +291,7 @@ export class StoryText {
       this.canvasSettled = false;
     }
 
-    this.crt.blend(from, to, t);
+    this.crt.blend(from, to, t, direction);
   }
 
   resize() {

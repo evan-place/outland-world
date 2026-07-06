@@ -24,7 +24,7 @@ function main() {
     beats,
     getAssetSettleDelayMs: () => beatAssets.getSettleRemainingMs(),
     onBeatChange: (fromIndex, progress, direction = 1) => {
-      storyText.setBeatState(fromIndex, progress);
+      storyText.setBeatState(fromIndex, progress, direction);
       beatAssets.setBeatState(fromIndex, progress, direction);
     },
   });

@@ -1,5 +1,5 @@
 import gsap from "gsap";
-import { SCROLL, AUTO_PLAY } from "../config.js";
+import { SCROLL, AUTO_PLAY, STORY_TRANSITION } from "../config.js";
 
 export function initStoryScroll({ beats, onBeatChange, getAssetSettleDelayMs }) {
   const a11y = document.getElementById("story-a11y");
@@ -12,7 +12,7 @@ export function initStoryScroll({ beats, onBeatChange, getAssetSettleDelayMs }) 
     introDwell: reduced ? AUTO_PLAY.reducedIntroDwellMs : AUTO_PLAY.introDwellMs,
     beatDwell: reduced ? AUTO_PLAY.reducedBeatDwellMs : AUTO_PLAY.beatDwellMs,
     beatDwellLast: reduced ? AUTO_PLAY.reducedBeatDwellLastMs : AUTO_PLAY.beatDwellLastMs,
-    transition: reduced ? AUTO_PLAY.reducedTransitionMs : AUTO_PLAY.transitionMs,
+    transition: reduced ? AUTO_PLAY.reducedTransitionMs : STORY_TRANSITION.beatDurationMs,
   };
 
   let currentBeat = 0;
@@ -133,6 +133,30 @@ export function initStoryScroll({ beats, onBeatChange, getAssetSettleDelayMs }) 
   let transitionFromBeat = 0;
   let transitionTargetBeat = 0;
   let lastTransitionT = 0;
+  let transitionGoingForward = true;
+
+  const transitionKick = () => (reduced ? 0.22 : SCROLL.transitionKick);
+  const transitionSpan = () => Math.max(1 - transitionKick(), 0.001);
+
+  const blendTFromU = (u, goingForward) => {
+    const kick = transitionKick();
+    const span = transitionSpan();
+    const clampedU = Math.max(0, Math.min(1, u));
+    // Both directions traverse the same eased interval [kick, 1]:
+    // forward  kick → 1  (incoming beat rises / settles in)
+    // reverse  1    → kick (mirror — outgoing beat exits, prior beat returns)
+    if (goingForward) return kick + span * clampedU;
+    return kick + span * (1 - clampedU);
+  };
+
+  const uFromBlendT = (blendT, goingForward) => {
+    const kick = transitionKick();
+    const span = transitionSpan();
+    const clampedT = Math.max(0, Math.min(1, blendT));
+    const normalized = Math.max(0, Math.min(1, (clampedT - kick) / span));
+    if (goingForward) return normalized;
+    return 1 - normalized;
+  };
 
   const scheduleAutoAdvance = () => {
     clearAutoTimer();
@@ -158,59 +182,110 @@ export function initStoryScroll({ beats, onBeatChange, getAssetSettleDelayMs }) 
     scheduleAutoAdvance();
   };
 
-  const armNextStep = () => {
-    nextStepAllowedAt = performance.now() + SCROLL.momentumGuardMs;
+  const armNextStep = (direction = transitionDirection) => {
+    const guardMs = direction < 0 ? SCROLL.reverseMomentumGuardMs : SCROLL.momentumGuardMs;
+    nextStepAllowedAt = performance.now() + guardMs;
     wheelAccum = 0;
   };
 
-  const canAcceptStep = () => {
-    return phase === "settled" && performance.now() >= nextStepAllowedAt;
+  const canAcceptStep = (direction = 1) => {
+    if (phase !== "settled") return false;
+    if (performance.now() >= nextStepAllowedAt) return true;
+    if (direction < 0) {
+      return (
+        performance.now() >=
+        nextStepAllowedAt - (SCROLL.momentumGuardMs - SCROLL.reverseMomentumGuardMs)
+      );
+    }
+    return false;
   };
 
-  const completeTransition = (fromBeat, targetBeat, startT, endT) => {
+  const beatTransitionSec = () => STORY_TRANSITION.beatDurationMs / 1000;
+
+  const transitionDurationForU = (startU) => {
+    const distance = Math.max(0, 1 - startU);
+    const fullSec = beatTransitionSec();
+    if (reduced) return Math.max(0.12, fullSec * distance * 0.2);
+    return Math.max(fullSec * 0.35, fullSec * distance);
+  };
+
+  const completeTransition = (fromBeat, targetBeat, startU, goingForward) => {
     transitionTween?.kill();
     transitionFromBeat = fromBeat;
     transitionTargetBeat = targetBeat;
-    lastTransitionT = startT;
+    transitionGoingForward = goingForward;
+    phase = "transitioning";
+    clearAutoTimer();
+    startPlayback();
+    nextStepAllowedAt = Number.POSITIVE_INFINITY;
 
-    const anim = { t: startT };
-    const distance = Math.abs(endT - startT);
-    const duration = Math.max(
-      reduced ? 0.12 : SCROLL.transitionMinDuration,
-      (reduced ? 0.2 : SCROLL.transitionDuration) * distance
-    );
+    const anim = { u: startU };
+    const duration = transitionDurationForU(startU);
 
-    applyState(fromBeat, startT, 0);
+    const applyFromU = (u, linearP) => {
+      const blendT = blendTFromU(u, goingForward);
+      lastTransitionT = blendT;
+      applyState(fromBeat, blendT, linearP);
+    };
+
+    applyFromU(startU, 0);
 
     transitionTween = gsap.to(anim, {
-      t: endT,
+      u: 1,
       duration,
-      ease: "power3.out",
+      ease: "none",
       onUpdate: function onTransitionUpdate() {
-        lastTransitionT = anim.t;
-        applyState(fromBeat, anim.t, this.progress());
+        applyFromU(anim.u, this.progress());
       },
       onComplete: () => {
         transitionTween = null;
         settleAt(targetBeat);
-        armNextStep();
+        armNextStep(transitionDirection);
       },
     });
   };
 
-  const beginTransition = (direction, { force = false } = {}) => {
-    if (phase === "transitioning") return;
+  const interruptTransition = (direction) => {
+    if (phase !== "transitioning" || direction === transitionDirection) return false;
 
-    if (!force && !canAcceptStep()) {
-      return;
+    const fromBeat = transitionFromBeat;
+    const currentT = lastTransitionT;
+    const wasForward = transitionGoingForward;
+
+    transitionDirection = direction;
+    wheelAccum = 0;
+
+    const goingForward = direction > 0;
+    const startU = uFromBlendT(currentT, wasForward);
+
+    if (direction > 0) {
+      const targetBeat = Math.min(beatCount - 1, fromBeat + 1);
+      if (targetBeat <= fromBeat && currentT >= 1) return false;
+      syncTimelineElapsed(timelineMsAtTransitionStart(fromBeat));
+      completeTransition(fromBeat, targetBeat, startU, true);
+      return true;
+    }
+
+    const targetBeat = fromBeat;
+    if (targetBeat < 0 || currentT <= 0) return false;
+    syncTimelineElapsed(timelineMsForBeat(targetBeat));
+    completeTransition(fromBeat, targetBeat, startU, false);
+    return true;
+  };
+
+  const beginTransition = (direction, { force = false } = {}) => {
+    if (phase === "transitioning") {
+      return interruptTransition(direction);
+    }
+
+    if (!force && !canAcceptStep(direction)) {
+      return false;
     }
 
     const target = currentBeat + direction;
-    if (target < 0 || target >= beatCount) return;
+    if (target < 0 || target >= beatCount) return false;
 
-    phase = "transitioning";
-    clearAutoTimer();
-    startPlayback();
+    wheelAccum = 0;
 
     if (direction > 0) {
       syncTimelineElapsed(timelineMsAtTransitionStart(currentBeat));
@@ -218,51 +293,66 @@ export function initStoryScroll({ beats, onBeatChange, getAssetSettleDelayMs }) 
       syncTimelineElapsed(timelineMsForBeat(target));
     }
 
-    wheelAccum = 0;
-    nextStepAllowedAt = Number.POSITIVE_INFINITY;
-
-    const goingForward = direction > 0;
     transitionDirection = direction;
+    const goingForward = direction > 0;
     const fromBeat = goingForward ? currentBeat : target;
-    const kick = reduced ? 0.22 : SCROLL.transitionKick;
-    const startT = goingForward ? kick : 1 - kick;
-    const endT = goingForward ? 1 : 0;
 
-    completeTransition(fromBeat, target, startT, endT);
+    completeTransition(fromBeat, target, 0, goingForward);
+    return true;
   };
 
   const onWheel = (event) => {
     event.preventDefault();
 
     const now = performance.now();
+    const interrupting = phase === "transitioning";
 
-    if (phase === "transitioning" || now < nextStepAllowedAt) {
+    if (!interrupting && phase !== "settled") {
       wheelAccum = 0;
       return;
     }
 
-    if (phase !== "settled") return;
+    const deltaY = event.deltaY;
+    const instant =
+      Math.abs(deltaY) >= SCROLL.wheelInstantDelta &&
+      (interrupting || canAcceptStep(deltaY > 0 ? 1 : -1));
+
+    if (instant) {
+      wheelAccum = 0;
+      beginTransition(deltaY > 0 ? 1 : -1);
+      return;
+    }
 
     if (lastWheelAt && now - lastWheelAt > SCROLL.wheelAccumDecayMs) {
       wheelAccum = 0;
     }
     lastWheelAt = now;
 
-    wheelAccum += event.deltaY;
-    if (Math.abs(wheelAccum) < SCROLL.wheelThreshold) return;
+    wheelAccum += deltaY;
+
+    let threshold = SCROLL.wheelThreshold;
+    if (interrupting) {
+      threshold = SCROLL.interruptWheelThreshold;
+    } else if (wheelAccum < 0) {
+      threshold = SCROLL.reverseWheelThreshold;
+    }
+
+    if (Math.abs(wheelAccum) < threshold) return;
 
     const direction = wheelAccum > 0 ? 1 : -1;
+    if (!interrupting && !canAcceptStep(direction)) return;
+
     wheelAccum = 0;
     beginTransition(direction);
   };
 
   const onTouchStart = (event) => {
-    if (phase === "transitioning" || !canAcceptStep()) return;
+    if (phase !== "settled" && phase !== "transitioning") return;
     touchStartY = event.touches[0]?.clientY ?? null;
   };
 
   const onTouchEnd = (event) => {
-    if (touchStartY === null || phase === "transitioning" || !canAcceptStep()) return;
+    if (touchStartY === null) return;
 
     const endY = event.changedTouches[0]?.clientY;
     if (endY == null) return;
@@ -275,12 +365,12 @@ export function initStoryScroll({ beats, onBeatChange, getAssetSettleDelayMs }) 
   };
 
   const onKeyDown = (event) => {
-    if (!canAcceptStep()) return;
-
     if (event.key === "ArrowDown" || event.key === "PageDown" || event.key === " ") {
+      if (!canAcceptStep(1) && phase !== "transitioning") return;
       event.preventDefault();
       beginTransition(1);
     } else if (event.key === "ArrowUp" || event.key === "PageUp") {
+      if (!canAcceptStep(-1) && phase !== "transitioning") return;
       event.preventDefault();
       beginTransition(-1);
     }

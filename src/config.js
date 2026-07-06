@@ -13,13 +13,18 @@ export const STYLE_PRESETS = {
 };
 
 export const SCROLL = {
-  transitionDuration: 1.5,
-  transitionMinDuration: 0.55,
-  transitionKick: 0.12,
-  wheelThreshold: 30,
-  wheelAccumDecayMs: 70,
-  momentumGuardMs: 220,
-  swipeThreshold: 48,
+  /** Scroll kick — full transition wall time comes from STORY_TRANSITION.beatDurationMs. */
+  transitionKick: 0.2,
+  wheelThreshold: 14,
+  reverseWheelThreshold: 8,
+  /** Single wheel tick above this fires immediately (trackpad flicks). */
+  wheelInstantDelta: 42,
+  /** Lower bar when reversing mid-transition so back-scroll registers immediately. */
+  interruptWheelThreshold: 4,
+  wheelAccumDecayMs: 110,
+  momentumGuardMs: 90,
+  reverseMomentumGuardMs: 0,
+  swipeThreshold: 36,
 };
 
 /** Auto-advance story beats with continuous progress-bar playback. */
@@ -29,20 +34,50 @@ export const AUTO_PLAY = {
   introDwellMs: 3200,
   beatDwellMs: 3400,
   beatDwellLastMs: 4200,
-  /** Matches typical beat transition length (ms). */
-  transitionMs: 1500,
+  /** Matches STORY_TRANSITION.beatDurationMs for auto-advance progress bar. */
+  transitionMs: 1600,
   reducedIntroDwellMs: 1400,
   reducedBeatDwellMs: 2000,
   reducedBeatDwellLastMs: 2800,
   reducedTransitionMs: 280,
 };
 
-/** CRT text transitions — warp blend tuning. */
+/** Lens viewport text transition — vertical travel + rim distortion. */
 export const STORY_TRANSITION = {
-  easePower: 1.35,
-  mixEdgeLow: 0.08,
-  mixEdgeHigh: 0.92,
+  /** Base padding; auto-expanded so text clears below/above the viewport. */
+  travelPadRatio: 1.2,
+  travelMargin: 0.08,
+  /** Higher = text lingers in warp bands longer (assets unaffected). */
+  travelEasePower: 2.75,
+  /** Shared wall-clock for intro + beat-to-beat text lens travel (all directions). */
+  beatDurationMs: 1600,
+  mixEdgeLow: 0.32,
+  mixEdgeHigh: 0.72,
+  lensCenterX: 0.5,
+  lensCenterY: 0.5,
+  /** Match half-viewport so screen top/bottom sit on the lens rim. */
+  lensRadiusX: 0.54,
+  lensRadiusY: 0.5,
+  lensStrength: 1.6,
+  /** Undistorted band height as a fraction of the viewport. */
+  safeZoneViewportRatio: 0.56,
+  /** Warp ramps from safe edge to lens rim; power <1 spreads distortion across the band. */
+  warpBandPower: 1.12,
+  safeInnerX: 0.68,
+  safeOuterX: 0.98,
+  motionSmear: 0.9,
+  smearLength: 0.15,
 };
+
+export function storyTravelEase(t) {
+  const x = Math.max(0, Math.min(1, t));
+  return 1 - Math.pow(1 - x, STORY_TRANSITION.travelEasePower);
+}
+
+export function storyTravelEaseInv(eased) {
+  const y = Math.max(0, Math.min(1, eased));
+  return 1 - Math.pow(1 - y, 1 / STORY_TRANSITION.travelEasePower);
+}
 
 export const SAFE_ZONE = {
   width: 600,
@@ -53,29 +88,32 @@ export const SAFE_ZONE = {
 /** Beat-scene asset transitions (warp deceleration in / accelerate out). */
 export const BEAT_ASSETS = {
   cameraZ: 14,
-  enterZOffset: -20,
+  enterZOffset: -30,
   /** 0 = spawn at vanishing point; 1 = spawn at full home XY. */
-  enterLateralSpread: 0.52,
-  exitZPush: 2.5,
-  exitEdgeDistance: 6.5,
-  exitScale: 0.42,
-  depthScaleFar: 0.06,
+  enterLateralSpread: 0.38,
+  exitZPush: 4.5,
+  exitEdgeDistance: 10.5,
+  /** NDC padding when pushing exits past the viewport edge. */
+  exitViewportPad: 0.28,
+  exitScale: 0.38,
+  depthScaleFar: 0.04,
   depthScaleNear: 1,
-  /** Rush from depth early, long eased settle — single smooth curve (no kink). */
-  incomingRushPower: 1.05,
-  incomingSettlePower: 5.2,
-  surfaceLagPower: 1.18,
+  /** Exponential warp-exit decel — higher = faster burst, sharper slowdown at end. */
+  incomingWarpRate: 16,
+  /** >1 compresses time early for a harder snap, longer settle tail. */
+  incomingTimePower: 2.15,
   /** First-load intro — slower than beat transitions. */
   introDurationMs: 3000,
   /** Beat-to-beat incoming warp (wall clock, continues after text settles). */
-  incomingDurationMs: 3600,
+  incomingDurationMs: 3900,
   /** Outgoing / retreat duration (wall clock, same transition clock). */
-  exitDurationMs: 1650,
+  /** Outgoing uses the same wall clock as incoming (see getLeavingProgress). */
+  exitDurationMs: 3900,
   exitEasePower: 1.55,
   exitOpacityFadeStart: 0.62,
   exitFadePower: 2.4,
-  scrollEasePower: 3,
-  transitionKick: 0.12,
+  scrollEasePower: 2.4,
+  transitionKick: 0.2,
   /** Cursor parallax on settled / transitioning assets (closer Z moves more). */
   parallax: {
     enabled: true,
@@ -87,6 +125,16 @@ export const BEAT_ASSETS = {
     strengthNear: 1,
     smooth: 0.11,
     mobileScale: 0.6,
+  },
+};
+
+/** Post-FX on the asset scene — motion-reactive trail blur. */
+export const ASSET_FX = {
+  motionTrail: {
+    /** Lower = trails fade quickly when assets are still. */
+    dampRest: 0.55,
+    /** Higher = stronger streaking while assets are in motion. */
+    dampPeak: 0.84,
   },
 };
 

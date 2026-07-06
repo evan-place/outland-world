@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { BEAT_ASSETS, SAFE_ZONE } from "../config.js";
 import { assetUrl } from "../utils/asset-url.js";
+import { AssetFx } from "./asset-fx.js";
 
 const BLEND_MAP = {
   normal: () => ({ blending: THREE.NormalBlending, transparent: true }),
@@ -22,23 +23,12 @@ function clamp01(t) {
 
 function easeIncoming(t) {
   const x = clamp01(t);
-  const w = x * x * (3 - 2 * x);
-  const power = lerp(BEAT_ASSETS.incomingRushPower, BEAT_ASSETS.incomingSettlePower, w);
-  return 1 - Math.pow(1 - x, power);
-}
-
-function easeOutgoing(t) {
-  const x = clamp01(t);
-  const smooth = x * x * (3 - 2 * x);
-  return Math.pow(smooth, BEAT_ASSETS.exitEasePower);
-}
-
-function easeOutgoingOpacity(t) {
-  const x = clamp01(t);
-  const start = BEAT_ASSETS.exitOpacityFadeStart;
-  if (x <= start) return 1;
-  const u = (x - start) / (1 - start);
-  return 1 - Math.pow(u, BEAT_ASSETS.exitFadePower);
+  const warp = BEAT_ASSETS.incomingTimePower ?? 1;
+  const warped = 1 - Math.pow(1 - x, warp);
+  const k = BEAT_ASSETS.incomingWarpRate;
+  if (k <= 0.01) return warped;
+  const denom = 1 - Math.exp(-k);
+  return denom < 1e-6 ? warped : (1 - Math.exp(-k * warped)) / denom;
 }
 
 function easeScrollProgress(linearP) {
@@ -55,23 +45,13 @@ function progressFromMs(elapsedMs, durationMs) {
   return clamp01(elapsedMs / durationMs);
 }
 
-function incomingDepth(t) {
-  return easeIncoming(t);
-}
-
-function incomingSurface(t) {
-  return easeIncoming(Math.pow(clamp01(t), BEAT_ASSETS.surfaceLagPower));
-}
-
 function renderOrderForZ(z) {
   return -z;
 }
 
-function depthScaleAtProgress(depthT, homeScale) {
+function depthScaleAtProgress(motion, homeScale) {
   const cfg = BEAT_ASSETS;
-  const boosted = Math.pow(clamp01(depthT), 0.8);
-  const eased = boosted * boosted * (3 - 2 * boosted);
-  return lerp(cfg.depthScaleFar * homeScale, cfg.depthScaleNear * homeScale, eased);
+  return lerp(cfg.depthScaleFar * homeScale, cfg.depthScaleNear * homeScale, motion);
 }
 
 function anchorToWorld(anchor) {
@@ -89,7 +69,18 @@ function resolveEnterOrigin(homePos) {
   };
 }
 
-function resolveExitTarget(home, anchor) {
+function isInsideViewport(x, y, z, camera, width, height, pad = 0.12) {
+  const v = new THREE.Vector3(x, y, z);
+  v.project(camera);
+  return (
+    v.x >= -1 - pad &&
+    v.x <= 1 + pad &&
+    v.y >= -1 - pad &&
+    v.y <= 1 + pad
+  );
+}
+
+function resolveExitTarget(home, anchor, camera, width, height) {
   let dirX = home.x;
   let dirY = home.y;
   const len = Math.hypot(dirX, dirY);
@@ -102,11 +93,27 @@ function resolveExitTarget(home, anchor) {
   }
 
   const dirLen = Math.hypot(dirX, dirY) || 1;
-  return {
-    x: home.x + (dirX / dirLen) * BEAT_ASSETS.exitEdgeDistance,
-    y: home.y + (dirY / dirLen) * BEAT_ASSETS.exitEdgeDistance,
-    z: home.z + BEAT_ASSETS.exitZPush,
-  };
+  const nx = dirX / dirLen;
+  const ny = dirY / dirLen;
+  const pad = BEAT_ASSETS.exitViewportPad ?? 0.28;
+  let dist = BEAT_ASSETS.exitEdgeDistance;
+  let ex = home.x + nx * dist;
+  let ey = home.y + ny * dist;
+  const ez = home.z + BEAT_ASSETS.exitZPush;
+
+  while (
+    camera &&
+    width &&
+    height &&
+    isInsideViewport(ex, ey, ez, camera, width, height, pad) &&
+    dist < 28
+  ) {
+    dist += 1.4;
+    ex = home.x + nx * dist;
+    ey = home.y + ny * dist;
+  }
+
+  return { x: ex, y: ey, z: ez };
 }
 
 function resolveSize(entry, texW, texH, isMobile, layoutScale = 1) {
@@ -197,6 +204,10 @@ export class BeatAssets {
     this.renderer.setClearColor(0x1d1c1a, 1);
     this.renderer.sortObjects = true;
     container.appendChild(this.renderer.domElement);
+    this.fx = new AssetFx(this.renderer, this.scene, this.camera, {
+      reducedMotion: this.reducedMotion,
+      backgroundColor: 0x1d1c1a,
+    });
 
     this._onResize = () => this.resize();
     this._onPointerMove = (event) => this.setPointerTarget(event.clientX, event.clientY);
@@ -337,6 +348,7 @@ export class BeatAssets {
           map: tex,
           transparent: true,
           blending: blend.blending,
+          premultipliedAlpha: blend.blending === THREE.MultiplyBlending,
           opacity: 0,
           depthWrite: false,
           depthTest: blend.blending === THREE.NormalBlending,
@@ -389,7 +401,13 @@ export class BeatAssets {
       rotZ: THREE.MathUtils.degToRad(item.rotation ?? 0),
       scale: 1,
       enter: resolveEnterOrigin(homePos),
-      exit: resolveExitTarget(homePos, item.anchor),
+      exit: resolveExitTarget(
+        homePos,
+        item.anchor,
+        this.camera,
+        this.container.clientWidth,
+        this.container.clientHeight
+      ),
     };
   }
 
@@ -435,12 +453,29 @@ export class BeatAssets {
 
   getLeavingProgress() {
     if (!this.assetTransition || this.reducedMotion) return 1;
-    return progressFromMs(this.getTransitionElapsed(), BEAT_ASSETS.exitDurationMs);
+    return progressFromMs(this.getTransitionElapsed(), BEAT_ASSETS.incomingDurationMs);
+  }
+
+  getMotionIntensity() {
+    if (this.reducedMotion) return 0;
+
+    let intensity = 0;
+    const k = BEAT_ASSETS.incomingWarpRate;
+
+    if (!this.introPlayed && this.settledBeat === 0) {
+      intensity = Math.max(intensity, Math.exp(-k * this.getIntroProgress()));
+    }
+
+    if (this.assetTransition) {
+      intensity = Math.max(intensity, Math.exp(-k * this.getIncomingProgress()));
+      intensity = Math.max(intensity, Math.exp(-k * this.getLeavingProgress()));
+    }
+
+    return intensity;
   }
 
   applyMeshState(mesh, role, { incomingT = 1, leavingT = 1 } = {}) {
     const { home, targetOpacity } = mesh.userData.layout;
-    const cfg = BEAT_ASSETS;
 
     if (role === "hidden") {
       mesh.visible = false;
@@ -456,7 +491,7 @@ export class BeatAssets {
       mesh.scale.setScalar(home.scale);
       mesh.material.opacity =
         role === "outgoing" || role === "retreat"
-          ? targetOpacity * (1 - leavingT)
+          ? targetOpacity * (1 - easeIncoming(leavingT))
           : targetOpacity * easeIncoming(incomingT);
       mesh.renderOrder = renderOrderForZ(home.z);
       this.storeBasePosition(mesh);
@@ -474,37 +509,63 @@ export class BeatAssets {
     }
 
     if (role === "incoming" || role === "return") {
-      const depth = incomingDepth(incomingT);
-      const surface = incomingSurface(incomingT);
-      const origin = home.enter;
-      const fromX = role === "return" ? home.exit.x : origin.x;
-      const fromY = role === "return" ? home.exit.y : origin.y;
-      const z = lerp(origin.z, home.z, depth);
+      const motion = easeIncoming(incomingT);
 
-      mesh.position.set(lerp(fromX, home.x, surface), lerp(fromY, home.y, surface), z);
-      mesh.rotation.z = lerp(home.rotZ * 0.4, home.rotZ, surface);
-      mesh.scale.setScalar(depthScaleAtProgress(depth, home.scale));
-      mesh.material.opacity = targetOpacity * Math.min(1, depth * 0.96 + 0.04);
-      mesh.renderOrder = renderOrderForZ(z);
+      if (role === "return") {
+        mesh.position.set(
+          lerp(home.exit.x, home.x, motion),
+          lerp(home.exit.y, home.y, motion),
+          lerp(home.exit.z, home.z, motion)
+        );
+        mesh.rotation.z = lerp(home.rotZ * 1.06, home.rotZ, motion);
+        mesh.scale.setScalar(lerp(BEAT_ASSETS.exitScale, home.scale, motion));
+      } else {
+        const origin = home.enter;
+        mesh.position.set(
+          lerp(origin.x, home.x, motion),
+          lerp(origin.y, home.y, motion),
+          lerp(origin.z, home.z, motion)
+        );
+        mesh.rotation.z = lerp(home.rotZ * 0.4, home.rotZ, motion);
+        mesh.scale.setScalar(depthScaleAtProgress(motion, home.scale));
+      }
+
+      mesh.material.opacity = targetOpacity * motion;
+      mesh.renderOrder = renderOrderForZ(home.z);
       this.storeBasePosition(mesh);
       return;
     }
 
-    if (role === "outgoing" || role === "retreat") {
-      const motion = easeOutgoing(leavingT);
-      const fade = easeOutgoingOpacity(leavingT);
-      const target = role === "outgoing" ? home.exit : home.enter;
-      const z = lerp(home.z, target.z, motion);
+    if (role === "outgoing") {
+      const motion = easeIncoming(leavingT);
+      const target = home.exit;
 
       mesh.position.set(
         lerp(home.x, target.x, motion),
         lerp(home.y, target.y, motion),
-        z
+        lerp(home.z, target.z, motion)
       );
-      mesh.rotation.z = lerp(home.rotZ, home.rotZ * (role === "outgoing" ? 1.06 : 0.45), motion);
-      mesh.scale.setScalar(lerp(home.scale, cfg.exitScale, motion * 0.7));
-      mesh.material.opacity = targetOpacity * fade;
-      mesh.renderOrder = renderOrderForZ(z);
+      mesh.rotation.z = lerp(home.rotZ, home.rotZ * 1.06, motion);
+      mesh.scale.setScalar(lerp(home.scale, BEAT_ASSETS.exitScale, motion));
+      mesh.material.opacity = targetOpacity * (1 - motion);
+      mesh.renderOrder = renderOrderForZ(home.z);
+      this.storeBasePosition(mesh);
+      return;
+    }
+
+    if (role === "retreat") {
+      const motion = easeIncoming(leavingT);
+      const target = home.enter;
+
+      mesh.position.set(
+        lerp(home.x, target.x, motion),
+        lerp(home.y, target.y, motion),
+        lerp(home.z, target.z, motion)
+      );
+      mesh.rotation.z = lerp(home.rotZ, home.rotZ * 0.4, motion);
+      mesh.scale.setScalar(depthScaleAtProgress(1 - motion, home.scale));
+      mesh.material.opacity = targetOpacity * (1 - motion);
+      mesh.renderOrder = renderOrderForZ(home.z);
       this.storeBasePosition(mesh);
     }
   }
@@ -614,6 +675,7 @@ export class BeatAssets {
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(w, h);
+    this.fx?.setSize(w, h);
 
     const isMobile = w < 768;
     for (const meshes of this.beatMeshes.values()) {
@@ -650,13 +712,15 @@ export class BeatAssets {
     }
 
     this.applyParallax();
-    this.renderer.render(this.scene, this.camera);
+    this.fx?.setMotionIntensity(this.getMotionIntensity());
+    this.fx?.render();
   }
 
   dispose() {
     window.removeEventListener("resize", this._onResize);
     window.removeEventListener("pointermove", this._onPointerMove);
     window.removeEventListener("pointerleave", this._onPointerLeave);
+    this.fx?.dispose();
     for (const meshes of this.beatMeshes.values()) {
       for (const mesh of meshes) {
         mesh.geometry.dispose();

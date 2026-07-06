@@ -1,4 +1,4 @@
-import { STYLE_PRESETS } from "../config.js";
+import { STYLE_PRESETS, STORY_TRANSITION } from "../config.js";
 
 const DEFAULT_TEXT_WIDTH = 600;
 const DPR = Math.min(window.devicePixelRatio || 1, 2);
@@ -162,65 +162,94 @@ precision mediump float;
 uniform sampler2D u_from;
 uniform sampler2D u_to;
 uniform float u_progress;
-uniform float u_mode;
-uniform float u_introSettle;
-uniform vec2 u_resolution;
+uniform float u_fromTravel;
+uniform float u_toTravel;
+uniform float u_motionSmear;
+uniform float u_viewHeight;
+uniform vec2 u_lensCenter;
+uniform vec2 u_lensRadius;
+uniform float u_lensStrength;
+uniform float u_safeInnerY;
+uniform float u_safeOuterY;
+uniform float u_warpBandPower;
+uniform float u_safeInnerX;
+uniform float u_safeOuterX;
+uniform float u_smearLength;
+uniform float u_mixLow;
+uniform float u_mixHigh;
 varying vec2 v_uv;
 
-float smoothPulse(float t) {
-  return sin(t * 3.14159265);
+float lensWarpAmount(vec2 screenUv) {
+  vec2 n = (screenUv - u_lensCenter) / u_lensRadius;
+  float yDist = abs(n.y);
+
+  float yWarp = smoothstep(u_safeInnerY, u_safeOuterY, yDist);
+  yWarp = pow(yWarp, u_warpBandPower);
+
+  float xDist = abs(n.x);
+  float xWarp = smoothstep(u_safeInnerX, u_safeOuterX, xDist) * yWarp;
+
+  return clamp(max(yWarp, xWarp * 0.72), 0.0, 1.0);
 }
 
-vec2 crtWarp(vec2 uv, float amount) {
-  vec2 c = uv - 0.5;
-  float r2 = clamp(dot(c, c), 0.0, 0.48);
-  float horizEdge = smoothstep(0.12, 0.92, abs(c.x) * 2.0);
-  float kx = 1.0 + amount * r2 * (1.0 + horizEdge * 1.25);
-  float ky = 1.0 + amount * r2 * 0.55;
-  return clamp(vec2(0.5 + c.x * kx, 0.5 + c.y * ky), vec2(0.006), vec2(0.994));
+vec2 lensDistort(vec2 screenUv) {
+  vec2 n = (screenUv - u_lensCenter) / u_lensRadius;
+  float warp = lensWarpAmount(screenUv);
+  if (warp <= 0.0001) return screenUv;
+
+  float k = u_lensStrength * warp;
+
+  vec2 bulge;
+  bulge.x = n.x * k * (1.1 + abs(n.y) * 0.72);
+  bulge.x *= 1.24;
+  bulge.y = n.y * k * 0.52;
+
+  return clamp(screenUv + bulge * u_lensRadius, vec2(0.003), vec2(0.997));
+}
+
+vec2 screenToTexture(vec2 screenUv, float travel) {
+  float viewH = u_viewHeight;
+  float viewBottom = 0.5 - viewH * 0.5 + travel;
+  return vec2(screenUv.x, viewBottom + screenUv.y * viewH);
+}
+
+vec4 sampleMotionSmear(sampler2D tex, vec2 texUv, float amount) {
+  if (amount <= 0.001) {
+    return texture2D(tex, clamp(texUv, vec2(0.003), vec2(0.997)));
+  }
+
+  vec4 acc = vec4(0.0);
+  float wsum = 0.0;
+  const int TAPS = 12;
+
+  for (int i = 0; i < TAPS; i++) {
+    float fi = float(i) / float(TAPS - 1);
+    float w = exp(-fi * 2.4);
+    vec2 suv = vec2(texUv.x, texUv.y - fi * amount * u_smearLength);
+    acc += texture2D(tex, clamp(suv, vec2(0.003), vec2(0.997))) * w;
+    wsum += w;
+  }
+
+  return acc / max(wsum, 0.0001);
+}
+
+vec4 sampleLayer(sampler2D tex, vec2 screenUv, float travel, float smearAmt) {
+  float warp = lensWarpAmount(screenUv);
+  vec2 lensUv = lensDistort(screenUv);
+  vec2 texUv = screenToTexture(lensUv, travel);
+  return sampleMotionSmear(tex, texUv, smearAmt * warp);
 }
 
 void main() {
   float t = clamp(u_progress, 0.0, 1.0);
-  bool introMode = u_mode > 0.5;
-  float pulse = introMode ? (1.0 - clamp(u_introSettle, 0.0, 1.0)) : smoothPulse(t);
-  float edge = max(abs(v_uv.x - 0.5), abs(v_uv.y - 0.5)) * 2.0;
-  float edgeMask = smoothstep(0.48, 0.95, edge);
-  edgeMask = edgeMask * edgeMask * (3.0 - 2.0 * edgeMask);
+  float warp = lensWarpAmount(v_uv);
+  float smearAmt = u_motionSmear * warp;
 
-  float warpAmt = pulse * 0.68 * (0.3 + edgeMask * 0.7);
-  vec2 warped = crtWarp(v_uv, warpAmt);
+  vec4 fromCol = sampleLayer(u_from, v_uv, u_fromTravel, smearAmt);
+  vec4 toCol = sampleLayer(u_to, v_uv, u_toTravel, smearAmt);
 
-  float ripple = sin(v_uv.y * u_resolution.y * 0.28 + t * 14.0) * pulse * edgeMask * 0.0048;
-  warped.x += ripple;
-  warped.x += sin(v_uv.x * u_resolution.x * 0.18 + t * 11.0) * pulse * edgeMask * 0.0032;
-
-  float chroma = pulse * edgeMask * 0.007;
-  vec4 fromCol = texture2D(u_from, warped);
-  vec4 toCol = texture2D(u_to, warped);
-  vec4 fromR = texture2D(u_from, vec2(clamp(warped.x + chroma, 0.006, 0.994), warped.y));
-  vec4 toR = texture2D(u_to, vec2(clamp(warped.x + chroma, 0.006, 0.994), warped.y));
-  vec4 fromB = texture2D(u_from, vec2(clamp(warped.x - chroma, 0.006, 0.994), warped.y));
-  vec4 toB = texture2D(u_to, vec2(clamp(warped.x - chroma, 0.006, 0.994), warped.y));
-
-  float mixAmt = introMode ? 1.0 : smoothstep(0.06, 0.94, t);
-  vec4 baseCol = mix(fromCol, toCol, mixAmt);
-  vec4 rCol = mix(fromR, toR, mixAmt);
-  vec4 bCol = mix(fromB, toB, mixAmt);
-  float ca = pulse * edgeMask * 0.65;
-  vec3 fringe = vec3(rCol.r - baseCol.r, 0.0, bCol.b - baseCol.b);
-  vec4 col;
-  col.rgb = baseCol.rgb + fringe * ca;
-  col.a = baseCol.a;
-
-  if (introMode) {
-    col.a *= smoothstep(0.0, 0.22, u_introSettle);
-  }
-
-  float scan = 0.965 + 0.035 * sin(v_uv.y * u_resolution.y * 0.65 + t * 9.0);
-  col.rgb *= mix(1.0, scan, edgeMask * 0.38);
-  col.rgb *= 1.0 - edgeMask * pulse * 0.075;
-  gl_FragColor = col;
+  float mixAmt = smoothstep(u_mixLow, u_mixHigh, t);
+  gl_FragColor = mix(fromCol, toCol, mixAmt);
 }`;
 
 function compile(gl, type, src) {
@@ -244,7 +273,10 @@ export class CRTBlend {
     this.metrics = readTextMetrics(sampleEl);
     this.displayWidth = this.metrics.textWidth;
     this.displayHeight = 0;
+    this.contentHeight = 0;
     this.stageHeight = 0;
+    this.viewHeight = 1;
+    this.travelDistance = 0.3;
     this._initGL();
     this.resize();
   }
@@ -262,9 +294,21 @@ export class CRTBlend {
       from: gl.getUniformLocation(prog, "u_from"),
       to: gl.getUniformLocation(prog, "u_to"),
       progress: gl.getUniformLocation(prog, "u_progress"),
-      mode: gl.getUniformLocation(prog, "u_mode"),
-      introSettle: gl.getUniformLocation(prog, "u_introSettle"),
-      resolution: gl.getUniformLocation(prog, "u_resolution"),
+      fromTravel: gl.getUniformLocation(prog, "u_fromTravel"),
+      toTravel: gl.getUniformLocation(prog, "u_toTravel"),
+      motionSmear: gl.getUniformLocation(prog, "u_motionSmear"),
+      viewHeight: gl.getUniformLocation(prog, "u_viewHeight"),
+      lensCenter: gl.getUniformLocation(prog, "u_lensCenter"),
+      lensRadius: gl.getUniformLocation(prog, "u_lensRadius"),
+      lensStrength: gl.getUniformLocation(prog, "u_lensStrength"),
+      safeInnerY: gl.getUniformLocation(prog, "u_safeInnerY"),
+      safeOuterY: gl.getUniformLocation(prog, "u_safeOuterY"),
+      warpBandPower: gl.getUniformLocation(prog, "u_warpBandPower"),
+      safeInnerX: gl.getUniformLocation(prog, "u_safeInnerX"),
+      safeOuterX: gl.getUniformLocation(prog, "u_safeOuterX"),
+      smearLength: gl.getUniformLocation(prog, "u_smearLength"),
+      mixLow: gl.getUniformLocation(prog, "u_mixLow"),
+      mixHigh: gl.getUniformLocation(prog, "u_mixHigh"),
     };
 
     const buf = gl.createBuffer();
@@ -287,8 +331,33 @@ export class CRTBlend {
     const blockHeights = beats.map((beat) =>
       measureBeatBlockH(beat.html, this.sampleEl, this.metrics)
     );
-    const stageH = Math.max(...blockHeights, 1);
+    const maxBlockH = Math.max(...blockHeights, 1);
+    this.contentHeight = maxBlockH;
+
+    const margin = STORY_TRANSITION.travelMargin;
+    let travelPad = Math.ceil(maxBlockH * STORY_TRANSITION.travelPadRatio);
+    let stageH = maxBlockH + travelPad * 2;
+
+    const minTravelForTraverse = () => {
+      const viewH = maxBlockH / stageH;
+      const blockNorm = maxBlockH / stageH;
+      return viewH * 0.5 + blockNorm * 0.5 + margin;
+    };
+
+    let travelDistance = travelPad / stageH;
+    let minTravel = minTravelForTraverse();
+    let guard = 0;
+    while (travelDistance < minTravel && guard < 24) {
+      travelPad += Math.ceil(maxBlockH * 0.12);
+      stageH = maxBlockH + travelPad * 2;
+      travelDistance = travelPad / stageH;
+      minTravel = minTravelForTraverse();
+      guard += 1;
+    }
+
     this.stageHeight = stageH;
+    this.viewHeight = maxBlockH / stageH;
+    this.travelDistance = travelDistance;
 
     this.textures = beats.map((beat, index) => {
       const c = document.createElement("canvas");
@@ -308,7 +377,7 @@ export class CRTBlend {
       };
     });
 
-    this.setStageHeight(stageH);
+    this.setContentHeight(this.contentHeight);
   }
 
   _setDisplaySize(width, height) {
@@ -325,67 +394,108 @@ export class CRTBlend {
     this.displayHeight = height;
   }
 
-  setStageHeight(height) {
-    this.stageHeight = Math.max(1, Math.ceil(height));
+  setContentHeight(height) {
+    this.contentHeight = Math.max(1, Math.ceil(height));
     if (this.metrics.textWidth > 0) {
-      this._setDisplaySize(this.metrics.textWidth, this.stageHeight);
+      this._setDisplaySize(this.metrics.textWidth, this.contentHeight);
     }
+  }
+
+  setStageHeight(height) {
+    this.setContentHeight(height);
   }
 
   resize() {
     this.metrics = readTextMetrics(this.sampleEl);
     this.displayWidth = this.metrics.textWidth;
-    if (this.stageHeight > 0) {
-      this._setDisplaySize(this.displayWidth, this.stageHeight);
+    if (this.contentHeight > 0) {
+      this._setDisplaySize(this.displayWidth, this.contentHeight);
     } else if (this.displayHeight > 0) {
       this._setDisplaySize(this.displayWidth, this.displayHeight);
     }
   }
 
-  _draw(beatIndex, { progress = 1, mode = 0, introSettle = -1 } = {}) {
+  _travelEase(t) {
+    const x = Math.max(0, Math.min(1, t));
+    return 1 - Math.pow(1 - x, STORY_TRANSITION.travelEasePower);
+  }
+
+  _computeTravel(progress, direction = 1) {
+    const enter = this.travelDistance;
+    const e = this._travelEase(progress);
+    const forward = direction >= 0;
+    const fromTravel = e * enter;
+    const toTravel = forward ? -(1 - e) * enter : (e - 1) * enter;
+    const motionSmear =
+      Math.max(Math.abs(fromTravel), Math.abs(toTravel)) * STORY_TRANSITION.motionSmear;
+
+    return { fromTravel, toTravel, motionSmear };
+  }
+
+  _bindWarpUniforms() {
     const gl = this.gl;
+    const cfg = STORY_TRANSITION;
+    const safeHalf = (cfg.safeZoneViewportRatio * 0.5) / cfg.lensRadiusY;
+    const safeInnerY = Math.min(0.88, safeHalf);
+    const screenEdgeY = 0.5 / cfg.lensRadiusY;
+    const safeOuterY = screenEdgeY;
+
+    gl.uniform1f(this.u.viewHeight, this.viewHeight);
+    gl.uniform2f(this.u.lensCenter, cfg.lensCenterX, cfg.lensCenterY);
+    gl.uniform2f(this.u.lensRadius, cfg.lensRadiusX, cfg.lensRadiusY);
+    gl.uniform1f(this.u.lensStrength, cfg.lensStrength);
+    gl.uniform1f(this.u.safeInnerY, safeInnerY);
+    gl.uniform1f(this.u.safeOuterY, safeOuterY);
+    gl.uniform1f(this.u.warpBandPower, cfg.warpBandPower);
+    gl.uniform1f(this.u.safeInnerX, cfg.safeInnerX);
+    gl.uniform1f(this.u.safeOuterX, cfg.safeOuterX);
+    gl.uniform1f(this.u.smearLength, cfg.smearLength);
+    gl.uniform1f(this.u.mixLow, cfg.mixEdgeLow);
+    gl.uniform1f(this.u.mixHigh, cfg.mixEdgeHigh);
+  }
+
+  travelEase(t) {
+    return this._travelEase(t);
+  }
+
+  riseIntoPlace(beatIndex, progress) {
     const idx = Math.max(0, Math.min(beatIndex, this.textures.length - 1));
-    const meta = this.textures[idx];
-    if (!meta) return;
-
-    if (this.stageHeight > 0 && this.metrics.textWidth > 0) {
-      this._setDisplaySize(this.metrics.textWidth, this.stageHeight);
-    }
-
-    gl.useProgram(this.prog);
-    gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, meta.tex);
-    gl.uniform1i(this.u.from, 0);
-    gl.activeTexture(gl.TEXTURE1);
-    gl.bindTexture(gl.TEXTURE_2D, meta.tex);
-    gl.uniform1i(this.u.to, 1);
-    gl.uniform1f(this.u.progress, progress);
-    gl.uniform1f(this.u.mode, mode);
-    gl.uniform1f(this.u.introSettle, introSettle);
-    gl.uniform2f(this.u.resolution, this.canvas.width, this.canvas.height);
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    const e = this._travelEase(progress);
+    const enter = this.travelDistance;
+    this._renderBlend({
+      fromIdx: idx,
+      toIdx: idx,
+      // Mix toward the incoming layer so toTravel is visible (same as beat enter).
+      progress: 1,
+      fromTravel: 0,
+      toTravel: -(1 - e) * enter,
+      motionSmear: (1 - e) * enter * STORY_TRANSITION.motionSmear,
+    });
   }
 
-  showSettledBeat(beatIndex) {
-    this._draw(beatIndex, { progress: 1, mode: 0, introSettle: -1 });
-  }
-
-  introSettleBeat(beatIndex, settle) {
-    this._draw(beatIndex, { progress: 1, mode: 1, introSettle: settle });
-  }
-
-  blend(from, to, progress) {
+  _renderBlend({
+    fromIdx,
+    toIdx,
+    progress = 0,
+    direction = 1,
+    travelProgress = null,
+    fromTravel = null,
+    toTravel = null,
+    motionSmear = null,
+  }) {
     const gl = this.gl;
-    const t = Math.max(0, Math.min(1, progress));
-    const fromIdx = Math.max(0, Math.min(from, this.textures.length - 1));
-    const toIdx = Math.max(0, Math.min(to, this.textures.length - 1));
     const fromMeta = this.textures[fromIdx];
     const toMeta = this.textures[toIdx];
     if (!fromMeta || !toMeta) return;
 
-    if (this.stageHeight > 0 && this.metrics.textWidth > 0) {
-      this._setDisplaySize(this.metrics.textWidth, this.stageHeight);
+    if (this.contentHeight > 0 && this.metrics.textWidth > 0) {
+      this._setDisplaySize(this.metrics.textWidth, this.contentHeight);
     }
+
+    const travel =
+      fromTravel != null
+        ? { fromTravel, toTravel, motionSmear }
+        : this._computeTravel(travelProgress ?? progress, direction);
 
     gl.useProgram(this.prog);
     gl.activeTexture(gl.TEXTURE0);
@@ -394,10 +504,42 @@ export class CRTBlend {
     gl.activeTexture(gl.TEXTURE1);
     gl.bindTexture(gl.TEXTURE_2D, toMeta.tex);
     gl.uniform1i(this.u.to, 1);
-    gl.uniform1f(this.u.progress, t);
-    gl.uniform1f(this.u.mode, 0);
-    gl.uniform1f(this.u.introSettle, -1);
-    gl.uniform2f(this.u.resolution, this.canvas.width, this.canvas.height);
+    gl.uniform1f(this.u.progress, Math.max(0, Math.min(1, progress)));
+    gl.uniform1f(this.u.fromTravel, travel.fromTravel);
+    gl.uniform1f(this.u.toTravel, travel.toTravel);
+    gl.uniform1f(this.u.motionSmear, travel.motionSmear);
+    this._bindWarpUniforms();
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  }
+
+  _draw(beatIndex) {
+    const idx = Math.max(0, Math.min(beatIndex, this.textures.length - 1));
+    this.riseIntoPlace(idx, 1);
+  }
+
+  showSettledBeat(beatIndex) {
+    this._draw(beatIndex);
+  }
+
+  introSettleBeat(beatIndex, settle) {
+    this.riseIntoPlace(beatIndex, settle);
+  }
+
+  blend(from, to, scrollProgress, direction = 1) {
+    const t = Math.max(0, Math.min(1, scrollProgress));
+    const fromIdx = Math.max(0, Math.min(from, this.textures.length - 1));
+    const toIdx = Math.max(0, Math.min(to, this.textures.length - 1));
+    if (fromIdx === toIdx) {
+      this.riseIntoPlace(fromIdx, t);
+      return;
+    }
+    const motionT = this._travelEase(t);
+    this._renderBlend({
+      fromIdx,
+      toIdx,
+      progress: motionT,
+      travelProgress: t,
+      direction,
+    });
   }
 }

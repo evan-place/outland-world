@@ -29,240 +29,319 @@
       "heightRatio": 0.4
     },
     "separationGroups": [
-      { "ids": ["doc-1", "doc-2"], "minZ": 12 }
+      { "ids": ["doc-01", "doc-02"], "minZ": 12 }
     ]
   },
   "assets": [
     {
-      "id": "terrain-purple",
-      "src": "/assets/terrain-purple.png",
-      "alt": "Terrain scan",
+      "id": "moon-image",
+      "src": "/assets/Moon Image.webp",
+      "alt": "Moon",
       "blendMode": "screen",
-      "opacity": 0.87,
+      "opacity": 0.88,
       "instances": 2,
-      "size": {
-        "maxWidth": 455,
-        "maxHeight": 392,
-        "scale": 1,
-        "scaleJitter": 0.12,
-        "depthScale": { "spawn": 0.12, "front": 1.45 }
-      },
-      "layout": { "lane": "left", "anchor": { "x": 0.08, "y": 0.48 }, "rotation": 90 },
-      "motion": { "speed": 0.28, "sway": { "amp": 0.05, "freq": 0.18 }, "rotSpeed": 0.04 }
+      "size": { "maxWidth": 420, "scale": 0.85, "scaleJitter": 0.12, "depthScale": { "spawn": 0.12, "front": 1.35 } },
+      "layout": { "lane": "top-right", "anchor": { "x": 0.88, "y": 0.14 }, "rotation": -8 },
+      "motion": { "speed": 0.24, "sway": { "amp": 0.04, "freq": 0.18 }, "rotSpeed": 0.04 }
     },
     {
-      "id": "world-builders",
-      "src": "/assets/world-builders.png",
-      "alt": "World builders graphic",
+      "id": "block-01",
+      "src": "/assets/block 01.webp",
+      "alt": "Collage block",
       "blendMode": "normal",
-      "opacity": 0.95,
+      "opacity": 0.94,
       "instances": 2,
-      "size": {
-        "maxWidth": 358,
-        "scale": 1,
-        "scaleJitter": 0.1,
-        "depthScale": { "spawn": 0.14, "front": 1.25 }
-      },
-      "layout": { "lane": "top-right", "anchor": { "x": 0.92, "y": 0.04 }, "rotation": 180 },
-      "motion": { "speed": 0.32, "sway": { "amp": 0.04, "freq": 0.2 }, "rotSpeed": 0.05 }
-    },
-    {
-      "id": "group-collage-a",
-      "src": "/assets/group-1597884273.png",
-      "alt": "Collage element",
-      "blendMode": "normal",
-      "opacity": 0.92,
-      "instances": 2,
-      "size": {
-        "maxWidth": 380,
-        "scale": 0.88,
-        "scaleJitter": 0.14,
-        "depthScale": { "spawn": 0.16, "front": 1.1 }
-      },
+      "size": { "maxWidth": 380, "scale": 0.88, "scaleJitter": 0.14, "depthScale": { "spawn": 0.16, "front": 1.1 } },
       "layout": { "lane": "top-left", "anchor": { "x": 0.14, "y": 0.32 }, "rotation": -6 },
       "motion": { "speed": 0.24, "sway": { "amp": 0.035, "freq": 0.22 }, "rotSpeed": 0.05 }
     },
     {
-      "id": "group-collage-b",
-      "src": "/assets/group-1597884301.png",
-      "alt": "Collage strip",
+      "id": "block-02",
+      "src": "/assets/block 02.webp",
+      "alt": "Collage block",
       "blendMode": "screen",
       "opacity": 0.9,
       "instances": 2,
-      "size": {
-        "maxWidth": 420,
-        "scale": 0.85,
-        "scaleJitter": 0.12,
-        "depthScale": { "spawn": 0.18, "front": 0.95 }
-      },
+      "size": { "maxWidth": 320, "scale": 0.82, "scaleJitter": 0.12, "depthScale": { "spawn": 0.18, "front": 0.95 } },
       "layout": { "lane": "top-right", "anchor": { "x": 0.78, "y": 0.12 }, "rotation": 8 },
       "motion": { "speed": 0.26, "sway": { "amp": 0.03, "freq": 0.24 }, "rotSpeed": 0.06 }
     },
     {
-      "id": "rectangle-square",
-      "src": "/assets/rectangle-346256853.png",
-      "alt": "Texture square",
+      "id": "block-03",
+      "src": "/assets/block 03.webp",
+      "alt": "Collage block",
       "blendMode": "lighten",
       "opacity": 0.85,
       "instances": 2,
-      "size": {
-        "maxWidth": 320,
-        "scale": 0.75,
-        "scaleJitter": 0.15,
-        "depthScale": { "spawn": 0.2, "front": 0.88 }
-      },
+      "size": { "maxWidth": 340, "scale": 0.78, "scaleJitter": 0.15, "depthScale": { "spawn": 0.2, "front": 0.88 } },
       "layout": { "lane": "left", "anchor": { "x": 0.1, "y": 0.62 }, "rotation": 12 },
       "motion": { "speed": 0.22, "sway": { "amp": 0.04, "freq": 0.21 }, "rotSpeed": 0.07 }
     },
     {
-      "id": "rectangle-wide",
-      "src": "/assets/rectangle-346256863.png",
-      "alt": "Wide collage panel",
+      "id": "block-04",
+      "src": "/assets/block 04.webp",
+      "alt": "Collage block",
       "blendMode": "normal",
       "opacity": 0.94,
       "instances": 2,
-      "size": {
-        "maxWidth": 480,
-        "scale": 0.9,
-        "scaleJitter": 0.1,
-        "depthScale": { "spawn": 0.11, "front": 1.35 }
-      },
+      "size": { "maxWidth": 480, "scale": 0.9, "scaleJitter": 0.1, "depthScale": { "spawn": 0.11, "front": 1.35 } },
       "layout": { "lane": "right", "anchor": { "x": 0.86, "y": 0.38 }, "rotation": -4 },
       "motion": { "speed": 0.28, "sway": { "amp": 0.038, "freq": 0.18 }, "rotSpeed": 0.04 }
     },
     {
-      "id": "3d-strip",
-      "src": "/assets/3d-5.png",
-      "alt": "3D terrain strip",
+      "id": "block-05",
+      "src": "/assets/block 05.webp",
+      "alt": "Collage block",
       "blendMode": "screen",
       "opacity": 0.88,
       "instances": 2,
-      "size": {
-        "maxWidth": 520,
-        "scale": 0.7,
-        "scaleJitter": 0.1,
-        "depthScale": { "spawn": 0.15, "front": 1.05 }
-      },
+      "size": { "maxWidth": 400, "scale": 0.75, "scaleJitter": 0.1, "depthScale": { "spawn": 0.15, "front": 1.05 } },
       "layout": { "lane": "top", "anchor": { "x": 0.5, "y": 0.06 }, "rotation": -2 },
       "motion": { "speed": 0.3, "sway": { "amp": 0.03, "freq": 0.2 }, "rotSpeed": 0.03 }
     },
     {
-      "id": "vector-ring",
-      "src": "/assets/vector.png",
-      "alt": "Vector diagram",
+      "id": "block-06",
+      "src": "/assets/block 06.webp",
+      "alt": "Collage block",
       "blendMode": "color-dodge",
       "opacity": 0.8,
       "instances": 2,
-      "size": {
-        "maxWidth": 400,
-        "scale": 0.72,
-        "scaleJitter": 0.12,
-        "depthScale": { "spawn": 0.14, "front": 1.15 }
-      },
+      "size": { "maxWidth": 360, "scale": 0.72, "scaleJitter": 0.12, "depthScale": { "spawn": 0.14, "front": 1.15 } },
       "layout": { "lane": "top-left", "anchor": { "x": 0.22, "y": 0.18 }, "rotation": 15 },
       "motion": { "speed": 0.2, "sway": { "amp": 0.05, "freq": 0.17 }, "rotSpeed": 0.08 }
     },
     {
-      "id": "lands-panorama",
-      "src": "/assets/lands5-4.png",
-      "alt": "Lands panorama",
+      "id": "block-07",
+      "src": "/assets/block 07.webp",
+      "alt": "Collage block",
       "blendMode": "screen",
       "opacity": 0.86,
       "instances": 2,
-      "size": {
-        "maxWidth": 560,
-        "scale": 0.82,
-        "scaleJitter": 0.08,
-        "depthScale": { "spawn": 0.1, "front": 1.5 }
-      },
+      "size": { "maxWidth": 520, "scale": 0.82, "scaleJitter": 0.08, "depthScale": { "spawn": 0.1, "front": 1.5 } },
       "layout": { "lane": "bottom", "anchor": { "x": 0.42, "y": 0.94 }, "rotation": -3 },
       "motion": { "speed": 0.25, "sway": { "amp": 0.035, "freq": 0.16 }, "rotSpeed": 0.02 }
     },
     {
-      "id": "galaxy-multiply",
-      "src": "/assets/galaxy-multiply.png",
-      "alt": "Galaxy",
-      "blendMode": "multiply",
-      "opacity": 0.88,
-      "instances": 2,
-      "size": {
-        "maxWidth": 834,
-        "scale": 0.95,
-        "scaleJitter": 0.08,
-        "depthScale": { "spawn": 0.07, "front": 2.05 }
-      },
-      "layout": { "lane": "bottom-left", "anchor": { "x": 0.12, "y": 0.82 }, "rotation": -123.39 },
-      "motion": { "speed": 0.24, "sway": { "amp": 0.05, "freq": 0.16 }, "rotSpeed": 0.02 }
-    },
-    {
-      "id": "texture-studies",
-      "src": "/assets/texture-studies-01-036.png",
-      "alt": "Texture studies",
+      "id": "block-08",
+      "src": "/assets/block 08.webp",
+      "alt": "Collage block",
       "blendMode": "lighten",
       "opacity": 0.82,
       "instances": 2,
-      "size": {
-        "maxWidth": 420,
-        "maxHeight": 680,
-        "scale": 0.78,
-        "scaleJitter": 0.1,
-        "depthScale": { "spawn": 0.08, "front": 1.75 }
-      },
-      "layout": { "lane": "bottom-left", "anchor": { "x": 0.18, "y": 0.88 }, "rotation": -8 },
-      "motion": { "speed": 0.22, "sway": { "amp": 0.04, "freq": 0.15 }, "rotSpeed": 0.03 }
-    },
-    {
-      "id": "image-portrait",
-      "src": "/assets/image-12514558.png",
-      "alt": "Portrait collage",
-      "blendMode": "normal",
-      "opacity": 0.93,
-      "instances": 2,
-      "size": {
-        "maxWidth": 340,
-        "maxHeight": 450,
-        "scale": 0.8,
-        "scaleJitter": 0.12,
-        "depthScale": { "spawn": 0.12, "front": 1.2 }
-      },
+      "size": { "maxWidth": 340, "scale": 0.8, "scaleJitter": 0.12, "depthScale": { "spawn": 0.12, "front": 1.2 } },
       "layout": { "lane": "left", "anchor": { "x": 0.06, "y": 0.35 }, "rotation": 5 },
       "motion": { "speed": 0.23, "sway": { "amp": 0.042, "freq": 0.19 }, "rotSpeed": 0.05 }
     },
     {
-      "id": "doc-1",
-      "src": "/assets/doc-1.png",
+      "id": "doc-01",
+      "src": "/assets/doc-01.webp",
       "alt": "Dept. of Imagination form",
       "blendMode": "normal",
       "opacity": 1,
       "instances": 2,
-      "size": {
-        "maxWidth": 822,
-        "maxHeight": 1060,
-        "scale": 0.92,
-        "scaleJitter": 0.06,
-        "depthScale": { "spawn": 0.06, "front": 2.15 }
-      },
+      "size": { "maxWidth": 822, "maxHeight": 1060, "scale": 0.92, "scaleJitter": 0.06, "depthScale": { "spawn": 0.06, "front": 2.15 } },
       "sizeMobile": { "maxWidth": 220, "scale": 0.45, "depthScale": { "spawn": 0.12, "front": 1.2 } },
       "layout": { "lane": "bottom-right", "anchor": { "x": 0.82, "y": 0.92 }, "rotation": 5.86 },
       "motion": { "speed": 0.2, "sway": { "amp": 0.04, "freq": 0.15 }, "rotSpeed": 0.04 }
     },
     {
-      "id": "doc-2",
-      "src": "/assets/doc-2.png",
+      "id": "doc-02",
+      "src": "/assets/doc-02.webp",
       "alt": "Document collage",
       "blendMode": "normal",
       "opacity": 0.96,
       "instances": 2,
-      "size": {
-        "maxWidth": 480,
-        "maxHeight": 720,
-        "scale": 0.85,
-        "scaleJitter": 0.08,
-        "depthScale": { "spawn": 0.07, "front": 1.95 }
-      },
+      "size": { "maxWidth": 480, "maxHeight": 720, "scale": 0.85, "scaleJitter": 0.08, "depthScale": { "spawn": 0.07, "front": 1.95 } },
       "sizeMobile": { "maxWidth": 200, "scale": 0.42, "depthScale": { "spawn": 0.12, "front": 1.15 } },
       "layout": { "lane": "bottom-left", "anchor": { "x": 0.14, "y": 0.9 }, "rotation": 4 },
       "motion": { "speed": 0.21, "sway": { "amp": 0.038, "freq": 0.14 }, "rotSpeed": 0.04 }
+    },
+    {
+      "id": "doc-03",
+      "src": "/assets/doc-03.webp",
+      "alt": "Document collage",
+      "blendMode": "normal",
+      "opacity": 0.93,
+      "instances": 2,
+      "size": { "maxWidth": 420, "maxHeight": 680, "scale": 0.78, "scaleJitter": 0.1, "depthScale": { "spawn": 0.08, "front": 1.75 } },
+      "layout": { "lane": "bottom-left", "anchor": { "x": 0.18, "y": 0.88 }, "rotation": -8 },
+      "motion": { "speed": 0.22, "sway": { "amp": 0.04, "freq": 0.15 }, "rotSpeed": 0.03 }
+    },
+    {
+      "id": "doc-04",
+      "src": "/assets/doc-04.webp",
+      "alt": "Document collage",
+      "blendMode": "normal",
+      "opacity": 0.92,
+      "instances": 2,
+      "size": { "maxWidth": 380, "scale": 0.82, "scaleJitter": 0.1, "depthScale": { "spawn": 0.1, "front": 1.4 } },
+      "layout": { "lane": "right", "anchor": { "x": 0.9, "y": 0.58 }, "rotation": 0 },
+      "motion": { "speed": 0.23, "sway": { "amp": 0.04, "freq": 0.17 }, "rotSpeed": 0.04 }
+    },
+    {
+      "id": "doc-05",
+      "src": "/assets/doc-05.webp",
+      "alt": "Document collage",
+      "blendMode": "normal",
+      "opacity": 0.95,
+      "instances": 2,
+      "size": { "maxWidth": 358, "scale": 1, "scaleJitter": 0.1, "depthScale": { "spawn": 0.14, "front": 1.25 } },
+      "layout": { "lane": "top-right", "anchor": { "x": 0.92, "y": 0.04 }, "rotation": 180 },
+      "motion": { "speed": 0.32, "sway": { "amp": 0.04, "freq": 0.2 }, "rotSpeed": 0.05 }
+    },
+    {
+      "id": "illo-cubes",
+      "src": "/assets/illo-cubes.webp",
+      "alt": "Cubes illustration",
+      "blendMode": "screen",
+      "opacity": 0.87,
+      "instances": 2,
+      "size": { "maxWidth": 455, "maxHeight": 392, "scale": 1, "scaleJitter": 0.12, "depthScale": { "spawn": 0.12, "front": 1.45 } },
+      "layout": { "lane": "left", "anchor": { "x": 0.08, "y": 0.48 }, "rotation": 90 },
+      "motion": { "speed": 0.28, "sway": { "amp": 0.05, "freq": 0.18 }, "rotSpeed": 0.04 }
+    },
+    {
+      "id": "illo-galaxy",
+      "src": "/assets/illo-galaxy.webp",
+      "alt": "Galaxy illustration",
+      "blendMode": "multiply",
+      "opacity": 0.88,
+      "instances": 2,
+      "size": { "maxWidth": 834, "scale": 0.95, "scaleJitter": 0.08, "depthScale": { "spawn": 0.07, "front": 2.05 } },
+      "layout": { "lane": "bottom-left", "anchor": { "x": 0.12, "y": 0.82 }, "rotation": -123.39 },
+      "motion": { "speed": 0.24, "sway": { "amp": 0.05, "freq": 0.16 }, "rotSpeed": 0.02 }
+    },
+    {
+      "id": "illo-galaxy2",
+      "src": "/assets/illo-galaxy2.webp",
+      "alt": "Galaxy illustration",
+      "blendMode": "screen",
+      "opacity": 0.86,
+      "instances": 2,
+      "size": { "maxWidth": 560, "scale": 0.82, "scaleJitter": 0.08, "depthScale": { "spawn": 0.1, "front": 1.5 } },
+      "layout": { "lane": "bottom", "anchor": { "x": 0.7, "y": 0.12 }, "rotation": 13 },
+      "motion": { "speed": 0.25, "sway": { "amp": 0.035, "freq": 0.16 }, "rotSpeed": 0.02 }
+    },
+    {
+      "id": "illo-marks-01",
+      "src": "/assets/illo-marks 01.webp",
+      "alt": "Mark illustration",
+      "blendMode": "lighten",
+      "opacity": 0.84,
+      "instances": 2,
+      "size": { "maxWidth": 280, "scale": 0.7, "scaleJitter": 0.14, "depthScale": { "spawn": 0.18, "front": 0.9 } },
+      "layout": { "lane": "top-left", "anchor": { "x": 0.2, "y": 0.22 }, "rotation": 10 },
+      "motion": { "speed": 0.22, "sway": { "amp": 0.04, "freq": 0.2 }, "rotSpeed": 0.06 }
+    },
+    {
+      "id": "illo-marks-02",
+      "src": "/assets/illo-marks 02.webp",
+      "alt": "Mark illustration",
+      "blendMode": "lighten",
+      "opacity": 0.84,
+      "instances": 2,
+      "size": { "maxWidth": 260, "scale": 0.68, "scaleJitter": 0.14, "depthScale": { "spawn": 0.18, "front": 0.88 } },
+      "layout": { "lane": "top-right", "anchor": { "x": 0.72, "y": 0.28 }, "rotation": -12 },
+      "motion": { "speed": 0.21, "sway": { "amp": 0.038, "freq": 0.19 }, "rotSpeed": 0.05 }
+    },
+    {
+      "id": "illo-marks-03",
+      "src": "/assets/illo-marks 03.webp",
+      "alt": "Mark illustration",
+      "blendMode": "screen",
+      "opacity": 0.82,
+      "instances": 2,
+      "size": { "maxWidth": 300, "scale": 0.72, "scaleJitter": 0.12, "depthScale": { "spawn": 0.16, "front": 0.95 } },
+      "layout": { "lane": "right", "anchor": { "x": 0.88, "y": 0.14 }, "rotation": -8 },
+      "motion": { "speed": 0.24, "sway": { "amp": 0.035, "freq": 0.21 }, "rotSpeed": 0.07 }
+    },
+    {
+      "id": "illo-marks-04",
+      "src": "/assets/illo-marks 04.webp",
+      "alt": "Mark illustration",
+      "blendMode": "color-dodge",
+      "opacity": 0.8,
+      "instances": 2,
+      "size": { "maxWidth": 320, "scale": 0.74, "scaleJitter": 0.12, "depthScale": { "spawn": 0.15, "front": 1 } },
+      "layout": { "lane": "left", "anchor": { "x": 0.12, "y": 0.72 }, "rotation": 6 },
+      "motion": { "speed": 0.23, "sway": { "amp": 0.04, "freq": 0.18 }, "rotSpeed": 0.06 }
+    },
+    {
+      "id": "illo-marks-05",
+      "src": "/assets/illo-marks 05.webp",
+      "alt": "Mark illustration",
+      "blendMode": "lighten",
+      "opacity": 0.83,
+      "instances": 2,
+      "size": { "maxWidth": 290, "scale": 0.7, "scaleJitter": 0.13, "depthScale": { "spawn": 0.17, "front": 0.92 } },
+      "layout": { "lane": "bottom-right", "anchor": { "x": 0.76, "y": 0.78 }, "rotation": 0 },
+      "motion": { "speed": 0.22, "sway": { "amp": 0.036, "freq": 0.17 }, "rotSpeed": 0.05 }
+    },
+    {
+      "id": "illo-marks-06",
+      "src": "/assets/illo-marks 06.webp",
+      "alt": "Mark illustration",
+      "blendMode": "screen",
+      "opacity": 0.81,
+      "instances": 2,
+      "size": { "maxWidth": 250, "scale": 0.65, "scaleJitter": 0.15, "depthScale": { "spawn": 0.19, "front": 0.85 } },
+      "layout": { "lane": "bottom-left", "anchor": { "x": 0.24, "y": 0.68 }, "rotation": 14 },
+      "motion": { "speed": 0.2, "sway": { "amp": 0.042, "freq": 0.16 }, "rotSpeed": 0.08 }
+    },
+    {
+      "id": "illo-marks-07",
+      "src": "/assets/illo-marks 07.webp",
+      "alt": "Mark illustration",
+      "blendMode": "lighten",
+      "opacity": 0.85,
+      "instances": 2,
+      "size": { "maxWidth": 310, "scale": 0.73, "scaleJitter": 0.12, "depthScale": { "spawn": 0.16, "front": 0.98 } },
+      "layout": { "lane": "top", "anchor": { "x": 0.38, "y": 0.1 }, "rotation": -5 },
+      "motion": { "speed": 0.25, "sway": { "amp": 0.034, "freq": 0.2 }, "rotSpeed": 0.04 }
+    },
+    {
+      "id": "illo-ol-logo1",
+      "src": "/assets/illo-ol_logo1.webp",
+      "alt": "Outland logo mark",
+      "blendMode": "normal",
+      "opacity": 0.92,
+      "instances": 2,
+      "size": { "maxWidth": 360, "scale": 0.8, "scaleJitter": 0.1, "depthScale": { "spawn": 0.13, "front": 1.2 } },
+      "layout": { "lane": "top-left", "anchor": { "x": 0.15, "y": 0.42 }, "rotation": 10 },
+      "motion": { "speed": 0.24, "sway": { "amp": 0.035, "freq": 0.22 }, "rotSpeed": 0.05 }
+    },
+    {
+      "id": "illo-ol-logo2",
+      "src": "/assets/illo-ol_logo2.webp",
+      "alt": "Outland logo mark",
+      "blendMode": "normal",
+      "opacity": 0.9,
+      "instances": 2,
+      "size": { "maxWidth": 340, "scale": 0.78, "scaleJitter": 0.1, "depthScale": { "spawn": 0.14, "front": 1.15 } },
+      "layout": { "lane": "right", "anchor": { "x": 0.84, "y": 0.42 }, "rotation": -6 },
+      "motion": { "speed": 0.23, "sway": { "amp": 0.033, "freq": 0.21 }, "rotSpeed": 0.05 }
+    },
+    {
+      "id": "illo-orbits",
+      "src": "/assets/illo-orbits.webp",
+      "alt": "Orbits illustration",
+      "blendMode": "screen",
+      "opacity": 0.88,
+      "instances": 2,
+      "size": { "maxWidth": 520, "scale": 0.88, "scaleJitter": 0.1, "depthScale": { "spawn": 0.11, "front": 1.4 } },
+      "layout": { "lane": "top", "anchor": { "x": 0.52, "y": 0.08 }, "rotation": -4 },
+      "motion": { "speed": 0.27, "sway": { "amp": 0.032, "freq": 0.19 }, "rotSpeed": 0.03 }
+    },
+    {
+      "id": "illo-spaceman",
+      "src": "/assets/illo-spaceman.webp",
+      "alt": "Spaceman illustration",
+      "blendMode": "normal",
+      "opacity": 0.94,
+      "instances": 2,
+      "size": { "maxWidth": 440, "scale": 0.86, "scaleJitter": 0.1, "depthScale": { "spawn": 0.12, "front": 1.3 } },
+      "layout": { "lane": "right", "anchor": { "x": 0.9, "y": 0.58 }, "rotation": 0 },
+      "motion": { "speed": 0.26, "sway": { "amp": 0.04, "freq": 0.18 }, "rotSpeed": 0.04 }
     }
   ]
 }
