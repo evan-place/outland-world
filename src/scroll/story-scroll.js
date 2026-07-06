@@ -142,20 +142,15 @@ export function initStoryScroll({ beats, onBeatChange, getAssetSettleDelayMs }) 
     const kick = transitionKick();
     const span = transitionSpan();
     const clampedU = Math.max(0, Math.min(1, u));
-    // Both directions traverse the same eased interval [kick, 1]:
-    // forward  kick → 1  (incoming beat rises / settles in)
-    // reverse  1    → kick (mirror — outgoing beat exits, prior beat returns)
-    if (goingForward) return kick + span * clampedU;
-    return kick + span * (1 - clampedU);
+    // Shared linear clock kick→1; crt-blend mirrors spatial motion when reversing.
+    return kick + span * clampedU;
   };
 
   const uFromBlendT = (blendT, goingForward) => {
     const kick = transitionKick();
     const span = transitionSpan();
     const clampedT = Math.max(0, Math.min(1, blendT));
-    const normalized = Math.max(0, Math.min(1, (clampedT - kick) / span));
-    if (goingForward) return normalized;
-    return 1 - normalized;
+    return Math.max(0, Math.min(1, (clampedT - kick) / span));
   };
 
   const scheduleAutoAdvance = () => {
@@ -168,8 +163,16 @@ export function initStoryScroll({ beats, onBeatChange, getAssetSettleDelayMs }) 
 
   const applyState = (from, t, linearP) => {
     const progress = Math.max(0, Math.min(1, t));
-    const settledBeat =
-      progress < 0.02 ? from : progress > 0.98 ? Math.min(beatCount - 1, from + 1) : from;
+    const kick = transitionKick();
+    let settledBeat = from;
+    if (transitionDirection >= 0) {
+      if (progress < 0.02) settledBeat = from;
+      else if (progress > 0.98) settledBeat = Math.min(beatCount - 1, from + 1);
+    } else if (progress > 0.98) {
+      settledBeat = from;
+    } else if (progress < kick + 0.02) {
+      settledBeat = Math.min(beatCount - 1, from + 1);
+    }
 
     a11y.innerHTML = beats[settledBeat].html.replace(/<[^>]+>/g, "");
     onBeatChange?.(from, progress, transitionDirection, linearP);

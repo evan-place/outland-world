@@ -526,20 +526,46 @@ export class CRTBlend {
   }
 
   blend(from, to, scrollProgress, direction = 1) {
-    const t = Math.max(0, Math.min(1, scrollProgress));
+    const animT = Math.max(0, Math.min(1, scrollProgress));
     const fromIdx = Math.max(0, Math.min(from, this.textures.length - 1));
     const toIdx = Math.max(0, Math.min(to, this.textures.length - 1));
     if (fromIdx === toIdx) {
-      this.riseIntoPlace(fromIdx, t);
+      const e = this._travelEase(animT);
+      const enter = this.travelDistance;
+      const sign = direction >= 0 ? -1 : 1;
+      this._renderBlend({
+        fromIdx,
+        toIdx: fromIdx,
+        progress: 1,
+        fromTravel: 0,
+        toTravel: sign * (1 - e) * enter,
+        motionSmear: (1 - e) * enter * STORY_TRANSITION.motionSmear,
+      });
       return;
     }
-    const motionT = this._travelEase(t);
+
+    const motionT = this._travelEase(animT);
+    const travel = this._computeTravel(animT, 1);
+
+    if (direction >= 0) {
+      this._renderBlend({
+        fromIdx,
+        toIdx,
+        progress: motionT,
+        travelProgress: animT,
+        direction: 1,
+      });
+      return;
+    }
+
+    // Exact forward motion, flipped vertically: outgoing exits down, incoming descends from above.
     this._renderBlend({
-      fromIdx,
-      toIdx,
+      fromIdx: toIdx,
+      toIdx: fromIdx,
       progress: motionT,
-      travelProgress: t,
-      direction,
+      fromTravel: -travel.fromTravel,
+      toTravel: -travel.toTravel,
+      motionSmear: travel.motionSmear,
     });
   }
 }

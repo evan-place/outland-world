@@ -1,4 +1,4 @@
-import { STORY_TRANSITION } from "../config.js";
+import { SCROLL, STORY_TRANSITION } from "../config.js";
 import { CRTBlend } from "./crt-blend.js";
 
 export class StoryText {
@@ -259,7 +259,14 @@ export class StoryText {
       this.finishIntroEarly();
     }
 
-    if (from >= this.beats.length - 1 || (t < 0.02 && (from !== 0 || this.introPlayed))) {
+    if (from >= this.beats.length - 1 || (direction >= 0 && t < 0.02 && (from !== 0 || this.introPlayed))) {
+      if (this.settledBeat !== from || !this.canvasSettled) {
+        this.showSettled(from);
+      }
+      return;
+    }
+
+    if (direction < 0 && t > 0.98) {
       if (this.settledBeat !== from || !this.canvasSettled) {
         this.showSettled(from);
       }
@@ -275,12 +282,19 @@ export class StoryText {
     }
 
     if (!this.crt) {
-      this.ensureBeat(this.outEl, "outBeat", from);
-      this.ensureBeat(this.inEl, "inBeat", to);
+      const animT = Math.max(0, Math.min(1, t));
+      const mix = 1 - Math.pow(1 - animT, STORY_TRANSITION.travelEasePower);
+      if (direction < 0) {
+        this.ensureBeat(this.outEl, "outBeat", to);
+        this.ensureBeat(this.inEl, "inBeat", from);
+      } else {
+        this.ensureBeat(this.outEl, "outBeat", from);
+        this.ensureBeat(this.inEl, "inBeat", to);
+      }
       this.inEl.style.visibility = "visible";
       this.outEl.style.visibility = "visible";
-      this.setOpacity(this.outEl, 1 - t);
-      this.setOpacity(this.inEl, t);
+      this.setOpacity(this.outEl, 1 - mix);
+      this.setOpacity(this.inEl, mix);
       return;
     }
 
