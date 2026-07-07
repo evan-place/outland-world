@@ -14,7 +14,13 @@
   --story-letter-spacing: -0.04em;
   --safe-zone-width: 600px;
   --safe-zone-height: 40vh;
-  --rail-width: 132px;
+  --rail-width-closed: 80px;
+  --rail-width-open: 516px;
+  --rail-panel-content-width: 428px;
+  --rail-panel-height: calc(100vh - 32px);
+  --rail-body-gap: 16px;
+  --rail-width: var(--rail-width-closed);
+  --chrome-logo-offset: calc(var(--rail-width) + 16px);
 
   --chrome-logo-top: 16px;
   --chrome-logo-height: 45px;
@@ -39,7 +45,7 @@
     --safe-zone-width: 274px;
     --chrome-logo-top: 70px;
     --chrome-logo-height: 31px;
-    --chrome-mobile-rail-height: 158px;
+    --chrome-mobile-rail-height: 90px;
     --chrome-cta-gap-above-rail: 32px;
     --chrome-cta-bottom: calc(
       var(--chrome-mobile-rail-height) + var(--chrome-cta-gap-above-rail)

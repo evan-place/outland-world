@@ -2,6 +2,7 @@ import assetsManifest from "./data/assets.json";
 import beatLayouts from "./data/beat-layouts.json";
 import storyData from "./data/story.json";
 import { initAmbientAudio } from "./audio/ambient-audio.js";
+import { initRail } from "./chrome/rail.js";
 import { initContactModal } from "./contact/contact-modal.js";
 import { BeatAssets } from "./scene/beat-assets.js";
 import { StoryText } from "./scene/story-text.js";
@@ -19,6 +20,7 @@ function main() {
 
   initAmbientAudio();
   initContactModal();
+  initRail();
 
   initStoryScroll({
     beats,

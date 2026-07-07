@@ -1,0 +1,30 @@
+<svg preserveAspectRatio="none" width="100%" height="100%" overflow="visible" style="display: block;" viewBox="0 0 22.1543 24.7134" fill="none" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="group">
+<g id="Repeat group 1">
+<g id="Repeat group 1_inner" data-figma-trr="r14u2.5-0f">
+<path id="Vector 12" d="M11.0802 0V5.0431" stroke="var(--stroke-0, #FCFCF5)" style="stroke:#FCFCF5;stroke:color(display-p3 0.9882 0.9882 0.9608);stroke-opacity:1;"/>
+</g>
+<use xlink:href="#Repeat%20group%201_inner" transform="translate(4.9265 -3.93355) rotate(25.7143)"/>
+<use xlink:href="#Repeat%20group%201_inner" transform="translate(11.0718 -5.34002) rotate(51.4286)"/>
+<use xlink:href="#Repeat%20group%201_inner" transform="translate(17.2188 -3.94086) rotate(77.1429)"/>
+<use xlink:href="#Repeat%20group%201_inner" transform="translate(22.15 -0.0131773) rotate(102.857)"/>
+<use xlink:href="#Repeat%20group%201_inner" transform="translate(24.8887 5.6651) rotate(128.571)"/>
+<use xlink:href="#Repeat%20group%201_inner" transform="translate(24.8924 11.9693) rotate(154.286)"/>
+<use xlink:href="#Repeat%20group%201_inner" transform="translate(22.1605 17.6508) rotate(-180)"/>
+<use xlink:href="#Repeat%20group%201_inner" transform="translate(17.234 21.5844) rotate(-154.286)"/>
+<use xlink:href="#Repeat%20group%201_inner" transform="translate(11.0887 22.9909) rotate(-128.571)"/>
+<use xlink:href="#Repeat%20group%201_inner" transform="translate(4.94168 21.5917) rotate(-102.857)"/>
+<use xlink:href="#Repeat%20group%201_inner" transform="translate(0.0105077 17.664) rotate(-77.1429)"/>
+<use xlink:href="#Repeat%20group%201_inner" transform="translate(-2.72817 11.9857) rotate(-51.4286)"/>
+<use xlink:href="#Repeat%20group%201_inner" transform="translate(-2.73192 5.68153) rotate(-25.7143)"/>
+</g>
+<g id="Union">
+<mask id="path-2-inside-1_0_6" fill="white">
+<path d="M22.1543 20.9488L11.0771 24.7125V24.7134L0 20.9488L0 4.78472L11.0762 8.54839L22.1543 4.78472L22.1543 20.9488Z"/>
+</mask>
+<path d="M22.1543 20.9488L11.0771 24.7125V24.7134L0 20.9488L0 4.78472L11.0762 8.54839L22.1543 4.78472L22.1543 20.9488Z" fill="var(--fill-0, #1D1C1A)" style="fill:#1D1C1A;fill:color(display-p3 0.1137 0.1098 0.1020);fill-opacity:1;"/>
+<path d="M22.1543 20.9488L22.476 21.8956L23.1543 21.6652V20.9488H22.1543ZM11.0771 24.7125L10.7554 23.7656L10.0771 23.9961V24.7125H11.0771ZM11.0771 24.7134L10.7554 25.6602L12.0771 26.1095V24.7134H11.0771ZM0 20.9488H-1L-1 21.6651L-0.321782 21.8956L0 20.9488ZM0 4.78472L0.321732 3.83789L-1 3.38877L-1 4.78472H0ZM11.0762 8.54839L10.7544 9.49522L11.0761 9.60454L11.3979 9.49524L11.0762 8.54839ZM22.1543 4.78472H23.1543V3.38885L21.8326 3.83787L22.1543 4.78472ZM22.1543 20.9488L21.8326 20.0019L10.7554 23.7656L11.0771 24.7125L11.3989 25.6593L22.476 21.8956L22.1543 20.9488ZM11.0771 24.7125H10.0771V24.7134H11.0771H12.0771V24.7125H11.0771ZM11.0771 24.7134L11.3989 23.7666L0.321782 20.002L0 20.9488L-0.321782 21.8956L10.7554 25.6602L11.0771 24.7134ZM0 20.9488H1L1 4.78472H0H-1L-1 20.9488H0ZM0 4.78472L-0.321732 5.73155L10.7544 9.49522L11.0762 8.54839L11.3979 7.60156L0.321732 3.83789L0 4.78472ZM11.0762 8.54839L11.3979 9.49524L22.476 5.73157L22.1543 4.78472L21.8326 3.83787L10.7545 7.60155L11.0762 8.54839ZM22.1543 4.78472H21.1543L21.1543 20.9488H22.1543H23.1543L23.1543 4.78472H22.1543Z" fill="var(--stroke-0, #FCFCF5)" style="fill:#FCFCF5;fill:color(display-p3 0.9882 0.9882 0.9608);fill-opacity:1;" mask="url(#path-2-inside-1_0_6)"/>
+</g>
+<path id="Vector 12_2" d="M11.0772 0V24.4632" stroke="var(--stroke-0, #FCFCF5)" style="stroke:#FCFCF5;stroke:color(display-p3 0.9882 0.9882 0.9608);stroke-opacity:1;"/>
+</g>
+</svg>

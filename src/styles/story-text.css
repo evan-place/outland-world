@@ -11,6 +11,18 @@
   align-items: center;
   justify-content: center;
   gap: var(--story-progress-offset);
+  transition: left 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (min-width: 769px) {
+  #story-layer {
+    left: var(--rail-width);
+  }
+
+  .story-stage,
+  .story-text-measure {
+    width: min(var(--story-max-width), calc(100vw - var(--rail-width) - 80px));
+  }
 }
 
 .story-stage {
