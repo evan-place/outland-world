@@ -1,4 +1,4 @@
-import { STYLE_PRESETS, STORY_TRANSITION } from "../config.js";
+import { STYLE_PRESETS, STORY_TRANSITION, storyTextClassName } from "../config.js";
 
 const DEFAULT_TEXT_WIDTH = 600;
 const DPR = Math.min(window.devicePixelRatio || 1, 2);
@@ -104,17 +104,17 @@ export function readTextMetrics(sampleEl, textWidth = DEFAULT_TEXT_WIDTH) {
   };
 }
 
-function measureBeatBlockH(html, sampleEl, metrics) {
+function measureBeatBlockH(html, sampleEl, style) {
   const measureEl = getMeasureEl(sampleEl);
   measureEl.innerHTML = html;
-  measureEl.className = "story-text";
+  measureEl.className = storyTextClassName(style);
   return Math.ceil(measureEl.offsetHeight);
 }
 
-export function renderBeatToStageCanvas(canvas, html, sampleEl, metrics, stageH) {
+export function renderBeatToStageCanvas(canvas, html, sampleEl, metrics, stageH, style) {
   const measureEl = getMeasureEl(sampleEl);
   measureEl.innerHTML = html;
-  measureEl.className = "story-text";
+  measureEl.className = storyTextClassName(style);
 
   const textWidth = metrics.textWidth;
   const blockH = Math.ceil(measureEl.offsetHeight);
@@ -329,7 +329,7 @@ export class CRTBlend {
     this.displayWidth = this.metrics.textWidth;
 
     const blockHeights = beats.map((beat) =>
-      measureBeatBlockH(beat.html, this.sampleEl, this.metrics)
+      measureBeatBlockH(beat.html, this.sampleEl, beat.style)
     );
     const maxBlockH = Math.max(...blockHeights, 1);
     this.contentHeight = maxBlockH;
@@ -361,7 +361,7 @@ export class CRTBlend {
 
     this.textures = beats.map((beat, index) => {
       const c = document.createElement("canvas");
-      renderBeatToStageCanvas(c, beat.html, this.sampleEl, this.metrics, stageH);
+      renderBeatToStageCanvas(c, beat.html, this.sampleEl, this.metrics, stageH, beat.style);
       const tex = gl.createTexture();
       gl.bindTexture(gl.TEXTURE_2D, tex);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);

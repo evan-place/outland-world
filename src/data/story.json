@@ -2,48 +2,38 @@
   "beats": [
     {
       "id": "beat-01",
-      "html": "Let's imagine what's possible.",
+      "html": "Let's <em>imagine</em> what's possible.",
       "style": "serif-lg"
     },
     {
       "id": "beat-02",
-      "html": "Every new possibility begins with <em>curiosity</em>.",
+      "html": "Every new idea begins<br>with curiosity.",
       "style": "serif-lg"
     },
     {
       "id": "beat-03",
-      "html": "Every project begins with a world.",
+      "html": "Every story<br>deserves a world.",
       "style": "serif-lg"
     },
     {
       "id": "beat-04",
-      "html": "A feeling.<br>A story.<br>An experience.",
+      "html": "Enter Outland",
       "style": "serif-lg"
     },
     {
       "id": "beat-05",
-      "html": "Then we explore.",
+      "html": "Design imagined through<br>narrative and emerging technology.",
       "style": "serif-lg"
     },
     {
       "id": "beat-06",
-      "html": "Through co-creation.<br>Through exploration.<br>Through emerging technology.",
+      "html": "We believe the stories we tell<br>become the futures we build.",
       "style": "serif-lg"
     },
     {
       "id": "beat-07",
-      "html": "Ideas become worlds people can step into.",
-      "style": "serif-md"
-    },
-    {
-      "id": "beat-08",
-      "html": "Tomorrow starts with imagination.",
+      "html": "Come <em>wander</em> with us.",
       "style": "serif-lg"
-    },
-    {
-      "id": "beat-09",
-      "html": "Come wander with us.",
-      "style": "serif-xl"
     }
   ]
 }

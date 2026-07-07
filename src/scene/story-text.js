@@ -1,4 +1,4 @@
-import { SCROLL, STORY_TRANSITION } from "../config.js";
+import { SCROLL, STORY_TRANSITION, storyTextClassName } from "../config.js";
 import { CRTBlend } from "./crt-blend.js";
 
 export class StoryText {
@@ -44,7 +44,7 @@ export class StoryText {
     const beat = this.beats[index];
     if (!beat) return;
     el.innerHTML = beat.html;
-    el.className = "story-text";
+    el.className = storyTextClassName(beat.style);
     this.positionBeatEl(el, index);
   }
 
@@ -122,7 +122,7 @@ export class StoryText {
     if (!beat) return;
 
     this.outBeat = 0;
-    el.className = "story-text story-text--intro-reduced";
+    el.className = `${storyTextClassName(beat.style)} story-text--intro-reduced`;
     el.innerHTML = beat.html;
     this.positionBeatEl(el, 0);
     el.style.visibility = "visible";
@@ -141,7 +141,7 @@ export class StoryText {
     const measure = document.getElementById("story-text-measure");
     if (!measure) return 0;
     measure.innerHTML = beat.html;
-    measure.className = "story-text";
+    measure.className = storyTextClassName(beat.style);
     return measure.offsetHeight;
   }
 
@@ -325,5 +325,17 @@ export class StoryText {
   destroy() {
     this.clearIntroAnimation();
     this.crt?.destroy();
+  }
+
+  restartFromBeginning() {
+    this.clearIntroAnimation();
+    this.introPlayed = false;
+    this.introPlaying = false;
+    this.warpActive = false;
+    this.canvasSettled = false;
+    this.settledBeat = -1;
+    this.outBeat = -1;
+    this.inBeat = -1;
+    this.showSettled(0);
   }
 }

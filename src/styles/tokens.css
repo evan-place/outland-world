@@ -8,7 +8,10 @@
   --font-serif: "Ivory LL", Georgia, serif;
   --font-screen: "Px Grotesk Screen", var(--font-sans);
 
-  --story-max-width: 600px;
+  --story-max-width: 640px;
+  --story-font-size: clamp(28px, 3.2vw, 40px);
+  --story-line-height: 1.3;
+  --story-letter-spacing: -0.04em;
   --safe-zone-width: 600px;
   --safe-zone-height: 40vh;
   --rail-width: 132px;
@@ -17,13 +20,12 @@
   --chrome-logo-height: 45px;
   --chrome-cta-bottom: 48px;
   --chrome-cta-height: 40px;
-  --story-progress-offset: 32px;
-  --story-progress-height: 4px;
+  --story-progress-offset: 24px;
+  --story-progress-height: 3px;
+  --story-progress-track: rgba(252, 252, 245, 0.1);
+  --story-progress-fill: rgba(252, 252, 245, 0.28);
   --chrome-story-zone-top: calc(var(--chrome-logo-top) + var(--chrome-logo-height));
-  --chrome-story-zone-bottom: calc(
-    var(--chrome-cta-bottom) + var(--chrome-cta-height) + var(--story-progress-offset) +
-      var(--story-progress-height)
-  );
+  --chrome-story-zone-bottom: calc(var(--chrome-cta-bottom) + var(--chrome-cta-height) + 24px);
   --story-stage-gap: 32px;
   --story-progress-width: 157px;
 }
@@ -32,6 +34,8 @@
   :root {
     /* Figma mobile frame (4880:275) */
     --story-max-width: 274px;
+    --story-font-size: 21.3px;
+    --story-line-height: 1.35;
     --safe-zone-width: 274px;
     --chrome-logo-top: 70px;
     --chrome-logo-height: 31px;

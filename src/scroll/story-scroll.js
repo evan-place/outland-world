@@ -1,10 +1,11 @@
 import gsap from "gsap";
 import { SCROLL, AUTO_PLAY, STORY_TRANSITION } from "../config.js";
 
-export function initStoryScroll({ beats, onBeatChange, getAssetSettleDelayMs }) {
+export function initStoryScroll({ beats, onBeatChange, onRestart, getAssetSettleDelayMs }) {
   const a11y = document.getElementById("story-a11y");
   const progressEl = document.getElementById("story-progress");
   const progressFill = progressEl?.querySelector(".story-progress__fill");
+  const restartEl = document.getElementById("story-restart");
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const beatCount = beats.length;
 
@@ -68,6 +69,31 @@ export function initStoryScroll({ beats, onBeatChange, getAssetSettleDelayMs }) 
     progressEl.hidden = false;
     progressEl.setAttribute("aria-hidden", "false");
     progressEl.classList.add("story-progress--visible");
+    updatePlaybackUi();
+  };
+
+  const isStoryComplete = () => {
+    if (currentBeat < beatCount - 1 || phase !== "settled" || playbackStart == null) {
+      return false;
+    }
+    const elapsed = performance.now() - playbackStart;
+    if (elapsed >= timelineTotalMs) return true;
+    return performance.now() - dwellStartedAt >= dwellForBeat(currentBeat);
+  };
+
+  const updatePlaybackUi = () => {
+    const atEnd = isStoryComplete();
+    if (progressEl) {
+      progressEl.hidden = atEnd;
+      progressEl.setAttribute("aria-hidden", atEnd ? "true" : "false");
+      if (!atEnd && playbackStart != null) {
+        progressEl.classList.add("story-progress--visible");
+      }
+    }
+    if (restartEl) {
+      restartEl.hidden = !atEnd;
+      restartEl.setAttribute("aria-hidden", atEnd ? "false" : "true");
+    }
   };
 
   const dwellForBeat = (beat) => {
@@ -84,9 +110,10 @@ export function initStoryScroll({ beats, onBeatChange, getAssetSettleDelayMs }) 
   };
 
   const shouldKeepPlaybackLoop = () => {
-    if (playbackStart == null) return false;
+    if (playbackStart == null || isStoryComplete()) return false;
     const elapsed = performance.now() - playbackStart;
     if (elapsed < timelineTotalMs) return true;
+    if (phase === "settled" && currentBeat >= beatCount - 1) return true;
     return (
       AUTO_PLAY.enabled &&
       !reduced &&
@@ -102,6 +129,11 @@ export function initStoryScroll({ beats, onBeatChange, getAssetSettleDelayMs }) 
     const now = performance.now();
     const elapsed = now - playbackStart;
     setProgressFill(elapsed / timelineTotalMs);
+    updatePlaybackUi();
+
+    if (isStoryComplete()) {
+      return;
+    }
 
     if (
       AUTO_PLAY.enabled &&
@@ -181,8 +213,13 @@ export function initStoryScroll({ beats, onBeatChange, getAssetSettleDelayMs }) 
   const settleAt = (beat) => {
     currentBeat = beat;
     phase = "settled";
+    transitionDirection = 1;
     applyState(beat, 0);
     scheduleAutoAdvance();
+    updatePlaybackUi();
+    if (!progressRaf && playbackStart != null && shouldKeepPlaybackLoop()) {
+      tickPlayback();
+    }
   };
 
   const armNextStep = (direction = transitionDirection) => {
@@ -248,8 +285,53 @@ export function initStoryScroll({ beats, onBeatChange, getAssetSettleDelayMs }) 
     });
   };
 
+  const restartStory = () => {
+    if (!isStoryComplete()) return;
+
+    transitionTween?.kill();
+    transitionTween = null;
+    wheelAccum = 0;
+    clearAutoTimer();
+    onRestart?.();
+
+    currentBeat = 0;
+    phase = "settled";
+    transitionDirection = 1;
+    timelineTotalMs = computeTimelineTotal();
+    playbackStart = performance.now();
+    dwellStartedAt = performance.now();
+    setProgressFill(0);
+    updatePlaybackUi();
+    scheduleAutoAdvance();
+    tickPlayback();
+    armNextStep(1);
+  };
+
+  const returnToStart = ({ force = false } = {}) => {
+    if (currentBeat <= 0 && phase === "settled") return false;
+
+    if (!force && phase === "settled" && !canAcceptStep(-1)) {
+      return false;
+    }
+
+    transitionTween?.kill();
+    transitionTween = null;
+    wheelAccum = 0;
+    transitionDirection = -1;
+    clearAutoTimer();
+    syncTimelineElapsed(0);
+    settleAt(0);
+    updatePlaybackUi();
+    armNextStep(-1);
+    return true;
+  };
+
   const interruptTransition = (direction) => {
     if (phase !== "transitioning" || direction === transitionDirection) return false;
+
+    if (direction < 0) {
+      return returnToStart({ force: true });
+    }
 
     const fromBeat = transitionFromBeat;
     const currentT = lastTransitionT;
@@ -258,25 +340,22 @@ export function initStoryScroll({ beats, onBeatChange, getAssetSettleDelayMs }) 
     transitionDirection = direction;
     wheelAccum = 0;
 
-    const goingForward = direction > 0;
     const startU = uFromBlendT(currentT, wasForward);
-
-    if (direction > 0) {
-      const targetBeat = Math.min(beatCount - 1, fromBeat + 1);
-      if (targetBeat <= fromBeat && currentT >= 1) return false;
-      syncTimelineElapsed(timelineMsAtTransitionStart(fromBeat));
-      completeTransition(fromBeat, targetBeat, startU, true);
-      return true;
-    }
-
-    const targetBeat = fromBeat;
-    if (targetBeat < 0 || currentT <= 0) return false;
-    syncTimelineElapsed(timelineMsForBeat(targetBeat));
-    completeTransition(fromBeat, targetBeat, startU, false);
+    const targetBeat = Math.min(beatCount - 1, fromBeat + 1);
+    if (targetBeat <= fromBeat && currentT >= 1) return false;
+    syncTimelineElapsed(timelineMsAtTransitionStart(fromBeat));
+    completeTransition(fromBeat, targetBeat, startU, true);
     return true;
   };
 
   const beginTransition = (direction, { force = false } = {}) => {
+    if (direction < 0) {
+      if (phase === "transitioning") {
+        return interruptTransition(direction);
+      }
+      return returnToStart({ force });
+    }
+
     if (phase === "transitioning") {
       return interruptTransition(direction);
     }
@@ -289,18 +368,10 @@ export function initStoryScroll({ beats, onBeatChange, getAssetSettleDelayMs }) 
     if (target < 0 || target >= beatCount) return false;
 
     wheelAccum = 0;
-
-    if (direction > 0) {
-      syncTimelineElapsed(timelineMsAtTransitionStart(currentBeat));
-    } else {
-      syncTimelineElapsed(timelineMsForBeat(target));
-    }
+    syncTimelineElapsed(timelineMsAtTransitionStart(currentBeat));
 
     transitionDirection = direction;
-    const goingForward = direction > 0;
-    const fromBeat = goingForward ? currentBeat : target;
-
-    completeTransition(fromBeat, target, 0, goingForward);
+    completeTransition(currentBeat, target, 0, true);
     return true;
   };
 
@@ -383,6 +454,7 @@ export function initStoryScroll({ beats, onBeatChange, getAssetSettleDelayMs }) 
   window.addEventListener("touchstart", onTouchStart, { passive: true });
   window.addEventListener("touchend", onTouchEnd, { passive: true });
   window.addEventListener("keydown", onKeyDown);
+  restartEl?.addEventListener("click", restartStory);
 
   settleAt(0);
   startPlayback();
@@ -390,8 +462,13 @@ export function initStoryScroll({ beats, onBeatChange, getAssetSettleDelayMs }) 
   return {
     getCurrentBeat: () => currentBeat,
     goToBeat: (index) => {
-      if (index === currentBeat || !canAcceptStep()) return;
-      beginTransition(index > currentBeat ? 1 : -1);
+      if (index === currentBeat) return;
+      if (index <= 0) {
+        returnToStart();
+        return;
+      }
+      if (!canAcceptStep()) return;
+      beginTransition(1);
     },
     destroy() {
       clearAutoTimer();
@@ -401,6 +478,7 @@ export function initStoryScroll({ beats, onBeatChange, getAssetSettleDelayMs }) 
       window.removeEventListener("touchstart", onTouchStart);
       window.removeEventListener("touchend", onTouchEnd);
       window.removeEventListener("keydown", onKeyDown);
+      restartEl?.removeEventListener("click", restartStory);
     },
   };
 }

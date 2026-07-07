@@ -30,6 +30,32 @@
             <canvas id="story-canvas" aria-hidden="true"></canvas>
           </div>
         </div>
+        <div class="story-playback" id="story-playback">
+          <div id="story-progress" class="story-progress" hidden aria-hidden="true">
+            <div class="story-progress__track">
+              <div class="story-progress__fill"></div>
+            </div>
+          </div>
+          <button
+            type="button"
+            id="story-restart"
+            class="story-restart"
+            hidden
+            aria-hidden="true"
+            aria-label="Start story over"
+          >
+            <svg class="story-restart__icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M12 5V2L7 7l5 5V9c2.76 0 5 2.24 5 5a5 5 0 1 1-9.9-1"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.25"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </button>
+        </div>
         <div id="story-a11y" class="visually-hidden" aria-live="polite"></div>
       </div>
 
@@ -84,12 +110,6 @@
           </div>
         </div>
       </aside>
-
-      <div id="story-progress" class="story-progress" hidden aria-hidden="true">
-        <div class="story-progress__track">
-          <div class="story-progress__fill"></div>
-        </div>
-      </div>
 
       <footer class="chrome-cta">
         <button type="button" id="contact-open" class="cta-pill">Let's Build</button>

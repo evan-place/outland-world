@@ -21,6 +21,27 @@ function clamp01(t) {
   return Math.max(0, Math.min(1, t));
 }
 
+function hash01(seed) {
+  const x = Math.sin(seed * 127.1 + 311.7) * 43758.5453;
+  return x - Math.floor(x);
+}
+
+function resolveFloatMotion(itemIndex, beatIndex) {
+  const seed = beatIndex * 17.3 + itemIndex * 9.1;
+
+  return {
+    phase: hash01(seed) * Math.PI * 2,
+    phaseY: hash01(seed * 2.17) * Math.PI * 2,
+    freq: 0.32 + hash01(seed * 3.31) * 0.22,
+    freqY: 0.26 + hash01(seed * 4.07) * 0.18,
+    ampX: 0.05 + hash01(seed * 5.19) * 0.065,
+    ampY: 0.04 + hash01(seed * 6.23) * 0.055,
+    ampZ: 0.022 + hash01(seed * 6.91) * 0.034,
+    rotAmp: 0.012 + hash01(seed * 7.29) * 0.02,
+    rotFreq: 0.28 + hash01(seed * 8.31) * 0.18,
+  };
+}
+
 function easeIncoming(t) {
   const x = clamp01(t);
   const warp = BEAT_ASSETS.incomingTimePower ?? 1;
@@ -252,6 +273,37 @@ export class BeatAssets {
     this.pointer.y += (this.pointerTarget.y - this.pointer.y) * smooth;
   }
 
+  floatScale() {
+    const cfg = BEAT_ASSETS.float;
+    if (this.reducedMotion || !cfg?.enabled) return 0;
+    return (this.isMobile ? cfg.mobileScale : 1) * (cfg.intensity ?? 1);
+  }
+
+  getFloatDrift(mesh) {
+    const motion = mesh.userData.float;
+    const scale = this.floatScale();
+    if (!motion || scale <= 0) {
+      return { x: 0, y: 0, z: 0, rotZ: 0 };
+    }
+
+    const t = performance.now() * 0.001;
+
+    return {
+      x: Math.sin(t * motion.freq + motion.phase) * motion.ampX * scale,
+      y: Math.cos(t * motion.freqY + motion.phaseY) * motion.ampY * scale,
+      z: Math.sin(t * motion.freq * 0.74 + motion.phaseY) * motion.ampZ * scale,
+      rotZ: Math.sin(t * motion.rotFreq + motion.phase) * motion.rotAmp * scale,
+    };
+  }
+
+  addFloatDrift(mesh) {
+    const drift = this.getFloatDrift(mesh);
+    mesh.position.x += drift.x;
+    mesh.position.y += drift.y;
+    mesh.position.z += drift.z;
+    mesh.rotation.z += drift.rotZ;
+  }
+
   applyParallax() {
     const cfg = BEAT_ASSETS.parallax;
     if (this.reducedMotion || !cfg?.enabled) return;
@@ -365,6 +417,7 @@ export class BeatAssets {
           targetOpacity,
           home: this.resolveHome(item, width, height),
         };
+        mesh.userData.float = resolveFloatMotion(itemIndex, beatIndex);
 
         this.scene.add(mesh);
         meshes.push(mesh);
@@ -419,6 +472,11 @@ export class BeatAssets {
     this.introStartTime = performance.now();
     this.assetTransition = null;
     this.updateAllMeshes();
+  }
+
+  restartFromBeginning() {
+    this.assetTransition = null;
+    this.startIntro();
   }
 
   getIntroProgress() {
@@ -494,6 +552,7 @@ export class BeatAssets {
           ? targetOpacity * (1 - easeIncoming(leavingT))
           : targetOpacity * easeIncoming(incomingT);
       mesh.renderOrder = renderOrderForZ(home.z);
+      this.addFloatDrift(mesh);
       this.storeBasePosition(mesh);
       return;
     }
@@ -504,6 +563,7 @@ export class BeatAssets {
       mesh.scale.setScalar(home.scale);
       mesh.material.opacity = targetOpacity;
       mesh.renderOrder = renderOrderForZ(home.z);
+      this.addFloatDrift(mesh);
       this.storeBasePosition(mesh);
       return;
     }
@@ -532,6 +592,7 @@ export class BeatAssets {
 
       mesh.material.opacity = targetOpacity * motion;
       mesh.renderOrder = renderOrderForZ(home.z);
+      this.addFloatDrift(mesh);
       this.storeBasePosition(mesh);
       return;
     }
@@ -549,6 +610,7 @@ export class BeatAssets {
       mesh.scale.setScalar(lerp(home.scale, BEAT_ASSETS.exitScale, motion));
       mesh.material.opacity = targetOpacity * (1 - motion);
       mesh.renderOrder = renderOrderForZ(home.z);
+      this.addFloatDrift(mesh);
       this.storeBasePosition(mesh);
       return;
     }
@@ -566,6 +628,7 @@ export class BeatAssets {
       mesh.scale.setScalar(depthScaleAtProgress(1 - motion, home.scale));
       mesh.material.opacity = targetOpacity * (1 - motion);
       mesh.renderOrder = renderOrderForZ(home.z);
+      this.addFloatDrift(mesh);
       this.storeBasePosition(mesh);
     }
   }
@@ -698,19 +761,13 @@ export class BeatAssets {
   }
 
   render() {
-    if (!this.introPlayed && this.settledBeat === 0) {
-      if (this.getIntroProgress() >= 1) {
-        this.finishIntro();
-      } else {
-        this.updateAllMeshes();
-      }
-    } else if (this.assetTransition) {
-      this.updateAllMeshes();
-      if (this.getIncomingProgress() >= 1) {
-        this.finishAssetTransition();
-      }
+    if (!this.introPlayed && this.settledBeat === 0 && this.getIntroProgress() >= 1) {
+      this.finishIntro();
+    } else if (this.assetTransition && this.getIncomingProgress() >= 1) {
+      this.finishAssetTransition();
     }
 
+    this.updateAllMeshes();
     this.applyParallax();
     this.fx?.setMotionIntensity(this.getMotionIntensity());
     this.fx?.render();

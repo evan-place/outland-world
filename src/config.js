@@ -12,6 +12,10 @@ export const STYLE_PRESETS = {
   "serif-md": { fontSize: 32, lineHeight: 1.35, letterSpacing: "-0.03em" },
 };
 
+export function storyTextClassName(_style) {
+  return "story-text";
+}
+
 export const SCROLL = {
   /** Scroll kick — full transition wall time comes from STORY_TRANSITION.beatDurationMs. */
   transitionKick: 0.2,
@@ -57,10 +61,10 @@ export const STORY_TRANSITION = {
   lensCenterY: 0.5,
   /** Match half-viewport so screen top/bottom sit on the lens rim. */
   lensRadiusX: 0.54,
-  lensRadiusY: 0.5,
+  lensRadiusY: 0.58,
   lensStrength: 1.6,
   /** Undistorted band height as a fraction of the viewport. */
-  safeZoneViewportRatio: 0.56,
+  safeZoneViewportRatio: 0.82,
   /** Warp ramps from safe edge to lens rim; power <1 spreads distortion across the band. */
   warpBandPower: 1.12,
   safeInnerX: 0.68,
@@ -99,13 +103,13 @@ export const BEAT_ASSETS = {
   depthScaleFar: 0.04,
   depthScaleNear: 1,
   /** Exponential warp-exit decel — higher = faster burst, sharper slowdown at end. */
-  incomingWarpRate: 16,
+  incomingWarpRate: 13,
   /** >1 compresses time early for a harder snap, longer settle tail. */
-  incomingTimePower: 2.15,
+  incomingTimePower: 2.4,
   /** First-load intro — slower than beat transitions. */
-  introDurationMs: 3000,
+  introDurationMs: 4000,
   /** Beat-to-beat incoming warp (wall clock, continues after text settles). */
-  incomingDurationMs: 3900,
+  incomingDurationMs: 4800,
   /** Outgoing / retreat duration (wall clock, same transition clock). */
   /** Outgoing uses the same wall clock as incoming (see getLeavingProgress). */
   exitDurationMs: 3900,
@@ -125,6 +129,12 @@ export const BEAT_ASSETS = {
     strengthNear: 1,
     smooth: 0.11,
     mobileScale: 0.6,
+  },
+  /** Gentle idle drift on visible assets (layered under cursor parallax). */
+  float: {
+    enabled: true,
+    intensity: 1.4,
+    mobileScale: 0.82,
   },
 };
 

@@ -23,6 +23,10 @@ function main() {
   initStoryScroll({
     beats,
     getAssetSettleDelayMs: () => beatAssets.getSettleRemainingMs(),
+    onRestart: () => {
+      storyText.restartFromBeginning();
+      beatAssets.restartFromBeginning();
+    },
     onBeatChange: (fromIndex, progress, direction = 1) => {
       storyText.setBeatState(fromIndex, progress, direction);
       beatAssets.setBeatState(fromIndex, progress, direction);
