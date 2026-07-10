@@ -23,6 +23,8 @@ export class StoryText {
     this.reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     this.useWarp = !this.reducedMotion;
     this.crt = this.useWarp ? new CRTBlend(canvasEl, elA) : null;
+    this._blendState = null;
+    this._lensPreviewActive = false;
 
     if (this.crt) {
       requestAnimationFrame(() => {
@@ -177,6 +179,7 @@ export class StoryText {
   positionBeatEl(el, beatIndex) {
     if (!this.maxStackHeight) return;
     const blockH = this.getBlockHeight(beatIndex);
+    // Keep DOM text centered in the taller viewport (matches canvas text placement).
     const top = Math.max(0, (this.maxStackHeight - blockH) / 2);
     el.style.top = `${top}px`;
   }
@@ -251,6 +254,10 @@ export class StoryText {
   }
 
   setBeatState(fromIndex, progress, direction = 1) {
+    if (this._lensPreviewActive && import.meta.env.DEV) {
+      return;
+    }
+
     const from = Math.max(0, Math.min(this.beats.length - 1, fromIndex));
     const to = Math.min(this.beats.length - 1, from + 1);
     const t = Math.max(0, Math.min(1, progress));
@@ -306,6 +313,56 @@ export class StoryText {
     }
 
     this.crt.blend(from, to, t, direction);
+    this._blendState = { from, to, t, direction };
+    this._lensPreviewActive = false;
+  }
+
+  clearLensPreview() {
+    this._lensPreviewActive = false;
+  }
+
+  refreshLens() {
+    if (!this.crt) return;
+
+    if (this._lensPreviewActive) {
+      this.previewLensTransition(this._blendState?.t ?? 0.45);
+      return;
+    }
+
+    if (this._blendState) {
+      const { from, to, t, direction } = this._blendState;
+      this.hideDomText();
+      this.showWarp();
+      this.warpActive = true;
+      this.canvasSettled = false;
+      this.crt.blend(from, to, t, direction);
+      return;
+    }
+
+    if (this.settledBeat >= 0) {
+      this.showSettledCanvas(this.settledBeat);
+    }
+  }
+
+  previewLensTransition(progress) {
+    if (!this.crt) return;
+
+    if (!this.stageFixed && this.crt.textures?.length) {
+      this.installFixedStage();
+    }
+
+    if (!this.introPlayed) {
+      this.finishIntroEarly();
+    }
+
+    const t = Math.max(0, Math.min(1, progress));
+    this.hideDomText();
+    this.showWarp();
+    this.warpActive = true;
+    this.canvasSettled = false;
+    this._lensPreviewActive = true;
+    this._blendState = { from: 0, to: 1, t, direction: 1 };
+    this.crt.blend(0, 1, t, 1);
   }
 
   resize() {
@@ -314,7 +371,9 @@ export class StoryText {
     try {
       this.crt.buildTextures(this.beats);
       this.installFixedStage();
-      if (this.settledBeat >= 0) {
+      if (this._lensPreviewActive) {
+        this.refreshLens();
+      } else if (this.settledBeat >= 0) {
         this.showSettled(this.settledBeat);
       }
     } catch (err) {

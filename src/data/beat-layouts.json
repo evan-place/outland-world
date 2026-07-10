@@ -1,102 +1,243 @@
 {
-  "beats": [
+  "layouts": [
     {
-      "id": "beat-01",
+      "id": "field-wander",
       "items": [
         {
-          "assetId": "illo-cubes",
-          "anchor": { "x": 0.1, "y": 0.38 },
-          "rotation": 94,
-          "z": -1.8,
-          "scale": 1.05
-        },
-        {
-          "assetId": "doc-05",
-          "anchor": { "x": 0.84, "y": 0.06 },
-          "rotation": 180,
-          "z": -0.4,
-          "scale": 1
-        },
-        {
-          "assetId": "illo-galaxy2",
-          "anchor": { "x": 0.7, "y": 0.12 },
-          "rotation": 13,
+          "assetId": "block-07",
+          "anchor": { "x": 0.105, "y": 0.4 },
+          "rotation": -7,
           "z": 0.2,
-          "scale": 0.95
+          "scale": 2.22,
+          "blendMode": "plus-lighter",
+          "opacity": 0.87
+        },
+        {
+          "assetId": "block-06",
+          "anchor": { "x": 0.805, "y": 0 },
+          "rotation": 180,
+          "z": -0.5,
+          "scale": 2.93,
+          "blendMode": "exclusion",
+          "opacity": 1
+        },
+        {
+          "assetId": "illo-marks-07",
+          "anchor": { "x": 0.235, "y": 0.26 },
+          "rotation": -4.5,
+          "z": 0,
+          "scale": 2.17,
+          "blendMode": "exclusion",
+          "opacity": 1
         },
         {
           "assetId": "illo-galaxy",
-          "anchor": { "x": 0.2, "y": 0.8 },
-          "rotation": -123,
-          "z": 1.4,
-          "scale": 1
-        },
-        {
-          "assetId": "doc-01",
-          "anchor": { "x": 0.76, "y": 0.88 },
-          "rotation": 6,
-          "z": 0.8,
-          "scale": 0.98
-        },
-        {
-          "assetId": "illo-spaceman",
-          "anchor": { "x": 0.9, "y": 0.58 },
-          "rotation": 0,
+          "anchor": { "x": 0.245, "y": 1 },
+          "rotation": -37.5,
           "z": 0.5,
-          "scale": 1.1,
-          "blendMode": "color-dodge"
+          "scale": 1.76,
+          "blendMode": "exclusion",
+          "opacity": 1
+        },
+        {
+          "assetId": "doc-05",
+          "anchor": { "x": 0.775, "y": 1 },
+          "rotation": -14,
+          "z": 1,
+          "scale": 3,
+          "blendMode": "normal",
+          "opacity": 1
+        },
+        {
+          "assetId": "illo-ol-logo1",
+          "anchor": { "x": 0.86, "y": 0.635 },
+          "rotation": -12.5,
+          "z": 1.5,
+          "scale": 2.29,
+          "blendMode": "exclusion",
+          "opacity": 0.69
+        }
+      ],
+      "itemsMobile": [
+        {
+          "assetId": "block-07",
+          "anchor": { "x": 0.1, "y": 0.28 },
+          "rotation": -12,
+          "z": 0.2,
+          "scale": 0.95,
+          "blendMode": "plus-lighter",
+          "opacity": 0.87
+        },
+        {
+          "assetId": "block-06",
+          "anchor": { "x": 1, "y": 0.02 },
+          "rotation": -85,
+          "z": -0.5,
+          "scale": 1.32,
+          "blendMode": "exclusion",
+          "opacity": 1
+        },
+        {
+          "assetId": "illo-marks-07",
+          "anchor": { "x": 0.275, "y": 0.205 },
+          "rotation": 2,
+          "z": 0.1,
+          "scale": 1.12,
+          "blendMode": "exclusion",
+          "opacity": 1
+        },
+        {
+          "assetId": "illo-galaxy",
+          "anchor": { "x": 0.08, "y": 0.775 },
+          "rotation": -45.5,
+          "z": 0.5,
+          "scale": 1.15,
+          "blendMode": "exclusion",
+          "opacity": 1
+        },
+        {
+          "assetId": "doc-05",
+          "anchor": { "x": 0.84, "y": 0.89 },
+          "rotation": -10,
+          "z": 1,
+          "scale": 1.74,
+          "blendMode": "normal",
+          "opacity": 1
+        },
+        {
+          "assetId": "illo-ol-logo1",
+          "anchor": { "x": 0.825, "y": 0.675 },
+          "rotation": -24,
+          "z": 1.5,
+          "scale": 1.06,
+          "blendMode": "exclusion",
+          "opacity": 0.43
         }
       ]
     },
     {
-      "id": "beat-02",
+      "id": "field-imagine",
       "items": [
         {
-          "assetId": "block-08",
-          "anchor": { "x": 0.16, "y": 0.08 },
-          "rotation": -105,
-          "z": -0.6,
-          "scale": 0.85,
-          "blendMode": "lighten"
+          "assetId": "doc-02",
+          "anchor": { "x": 0.21, "y": 0.91 },
+          "rotation": 24,
+          "z": 0.2,
+          "scale": 2.6,
+          "blendMode": "normal",
+          "opacity": 1
         },
         {
-          "assetId": "doc-01",
-          "anchor": { "x": 0.18, "y": 0.74 },
-          "rotation": -21,
-          "z": 1.2,
-          "scale": 1
+          "assetId": "illo-marks-05",
+          "anchor": { "x": 0.18, "y": 0.575 },
+          "rotation": -12.5,
+          "z": 0.2,
+          "scale": 2.19,
+          "blendMode": "normal",
+          "opacity": 1
         },
         {
-          "assetId": "block-01",
-          "anchor": { "x": 0.15, "y": 0.42 },
-          "rotation": 10,
-          "z": 0,
-          "scale": 0.92
-        },
-        {
-          "assetId": "illo-marks-03",
-          "anchor": { "x": 0.78, "y": 0.78 },
+          "assetId": "illo-galaxy2",
+          "anchor": { "x": 0.755, "y": 0.895 },
           "rotation": 0,
           "z": 0.6,
-          "scale": 1.15
+          "scale": 2.51,
+          "blendMode": "normal",
+          "opacity": 1
         },
         {
-          "assetId": "illo-marks-03",
-          "anchor": { "x": 0.88, "y": 0.14 },
-          "rotation": -8,
+          "assetId": "illo-marks-04",
+          "anchor": { "x": 0.79, "y": 0.18 },
+          "rotation": 0,
           "z": -0.3,
-          "scale": 0.55
+          "scale": 3,
+          "blendMode": "normal",
+          "opacity": 1
         },
         {
-          "assetId": "doc-03",
-          "anchor": { "x": 0.93, "y": 0.32 },
-          "rotation": 28,
+          "assetId": "block-04",
+          "anchor": { "x": 0.92, "y": 0.41 },
+          "rotation": -16.5,
           "z": 0.3,
-          "scale": 0.88,
-          "blendMode": "screen"
+          "scale": 2.5,
+          "blendMode": "plus-lighter",
+          "opacity": 0.77
+        },
+        {
+          "assetId": "block-05",
+          "anchor": { "x": 0.23, "y": 0 },
+          "rotation": 22.5,
+          "z": 0,
+          "scale": 1.69,
+          "blendMode": "normal",
+          "opacity": 1
+        }
+      ],
+      "itemsMobile": [
+        {
+          "assetId": "doc-02",
+          "anchor": { "x": 0.18, "y": 0.895 },
+          "rotation": 12.5,
+          "z": 0.2,
+          "scale": 1.67,
+          "blendMode": "normal",
+          "opacity": 1
+        },
+        {
+          "assetId": "illo-marks-05",
+          "anchor": { "x": 0.255, "y": 0.655 },
+          "rotation": -22.5,
+          "z": 0.2,
+          "scale": 1.86,
+          "blendMode": "normal",
+          "opacity": 1
+        },
+        {
+          "assetId": "illo-galaxy2",
+          "anchor": { "x": 1, "y": 0.695 },
+          "rotation": 0,
+          "z": 0.6,
+          "scale": 1.61,
+          "blendMode": "normal",
+          "opacity": 1
+        },
+        {
+          "assetId": "illo-marks-04",
+          "anchor": { "x": 0.82, "y": 0.14 },
+          "rotation": 0,
+          "z": -0.3,
+          "scale": 1.71,
+          "blendMode": "normal",
+          "opacity": 1
+        },
+        {
+          "assetId": "block-04",
+          "anchor": { "x": 0.92, "y": 0.255 },
+          "rotation": -14,
+          "z": 0.3,
+          "scale": 1.26,
+          "blendMode": "plus-lighter",
+          "opacity": 0.77
+        },
+        {
+          "assetId": "block-05",
+          "anchor": { "x": 0.16, "y": 0 },
+          "rotation": 18,
+          "z": 0,
+          "scale": 1.51,
+          "blendMode": "normal",
+          "opacity": 1
         }
       ]
     }
   ],
-  "fallbackPattern": ["beat-01", "beat-02"]
+  "assignments": [
+    "field-wander",
+    "field-imagine",
+    "field-wander",
+    "field-wander",
+    "field-imagine",
+    "field-wander",
+    "field-wander"
+  ]
 }

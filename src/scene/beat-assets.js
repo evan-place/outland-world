@@ -13,6 +13,64 @@ const BLEND_MAP = {
   multiply: () => ({ blending: THREE.MultiplyBlending, transparent: true }),
 };
 
+function resolveItemVisual(item) {
+  return {
+    blendMode: item.blendMode ?? "normal",
+    opacity: item.opacity ?? 1,
+  };
+}
+
+function applyBlendToMaterial(material, blendMode, opacity = 1) {
+  const blend = BLEND_MAP[blendMode]?.() ?? BLEND_MAP.normal();
+  const isNormal = blend.blending === THREE.NormalBlending;
+  const isMultiply = blend.blending === THREE.MultiplyBlending;
+  const isAdditive = blend.blending === THREE.AdditiveBlending;
+  const fullyOpaque = opacity >= 0.99;
+
+  material.blending = blend.blending;
+  material.transparent = true;
+  material.premultipliedAlpha = isMultiply;
+  material.alphaTest = 0;
+  material.depthWrite = isNormal && fullyOpaque && !isAdditive;
+  material.depthTest = true;
+}
+
+function shouldBakeOpaqueAlpha(entry) {
+  return entry?.ignoreAlpha === true || entry?.id?.startsWith("block-");
+}
+
+function bakeOpaqueAlpha(tex) {
+  const image = tex.image;
+  if (!image?.width || !image?.height || image.__outlandOpaqueAlpha) return;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = image.width;
+  canvas.height = image.height;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx) return;
+
+  ctx.drawImage(image, 0, 0);
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const { data } = imageData;
+  for (let i = 3; i < data.length; i += 4) {
+    data[i] = 255;
+  }
+  ctx.putImageData(imageData, 0, 0);
+  canvas.__outlandOpaqueAlpha = true;
+  tex.image = canvas;
+  tex.needsUpdate = true;
+}
+
+function configureLoadedTexture(tex, entry) {
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.generateMipmaps = false;
+  tex.minFilter = THREE.LinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+  if (shouldBakeOpaqueAlpha(entry)) {
+    bakeOpaqueAlpha(tex);
+  }
+}
+
 function lerp(a, b, t) {
   return a + (b - a) * t;
 }
@@ -67,7 +125,7 @@ function progressFromMs(elapsedMs, durationMs) {
 }
 
 function renderOrderForZ(z) {
-  return -z;
+  return z;
 }
 
 function depthScaleAtProgress(motion, homeScale) {
@@ -75,10 +133,24 @@ function depthScaleAtProgress(motion, homeScale) {
   return lerp(cfg.depthScaleFar * homeScale, cfg.depthScaleNear * homeScale, motion);
 }
 
-function anchorToWorld(anchor) {
+/** Desktop-authored framing spans; X scales with aspect so mobile stays on-screen. */
+const ANCHOR_REF_ASPECT = 16 / 9;
+const ANCHOR_X_SPAN = 9;
+const ANCHOR_Y_SPAN = 5.5;
+
+function getAnchorSpans(aspect) {
+  const a = aspect > 0.05 ? aspect : ANCHOR_REF_ASPECT;
+  return {
+    xSpan: ANCHOR_X_SPAN * (a / ANCHOR_REF_ASPECT),
+    ySpan: ANCHOR_Y_SPAN,
+  };
+}
+
+function anchorToWorld(anchor, aspect = ANCHOR_REF_ASPECT) {
   const x = (anchor.x ?? 0.5) * 2 - 1;
   const y = -((anchor.y ?? 0.5) * 2 - 1);
-  return { x: x * 9, y: y * 5.5 };
+  const { xSpan, ySpan } = getAnchorSpans(aspect);
+  return { x: x * xSpan, y: y * ySpan };
 }
 
 function resolveEnterOrigin(homePos) {
@@ -137,11 +209,10 @@ function resolveExitTarget(home, anchor, camera, width, height) {
   return { x: ex, y: ey, z: ez };
 }
 
-function resolveSize(entry, texW, texH, isMobile, layoutScale = 1) {
+function resolveSize(entry, texW, texH, _isMobile, layoutScale = 1) {
   const size = { ...(entry.size || {}) };
-  if (isMobile && entry.sizeMobile) {
-    Object.assign(size, entry.sizeMobile);
-  }
+  // Beat layouts own mobile sizing via item.scale / itemsMobile — ignore
+  // legacy sizeMobile from the streaming asset field.
 
   const scale = (size.scale ?? 1) * layoutScale;
   let w = size.maxWidth ?? 360;
@@ -211,6 +282,17 @@ export class BeatAssets {
     this.pointerTarget = { x: 0, y: 0 };
     this.pointer = { x: 0, y: 0 };
     this.isMobile = window.innerWidth < 768;
+    this.layoutTuning = false;
+    this.layoutTuningLivePreview = false;
+    this.tuningPreviewCycleStart = 0;
+    this.tuningPreviewOnProgress = null;
+    this.tuningBeat = 0;
+    this.skipSafeZoneNudge = false;
+    this._layoutSnapshots = new Map();
+    this._raycaster = new THREE.Raycaster();
+    this._pickNdc = new THREE.Vector2();
+    this.tuningSelection = null;
+    this.selectionOutline = null;
 
     for (const entry of assetsManifest.assets || []) {
       this.entryById.set(entry.id, entry);
@@ -220,9 +302,14 @@ export class BeatAssets {
     this.camera = new THREE.PerspectiveCamera(48, 1, 0.1, 80);
     this.camera.position.set(0, 0, BEAT_ASSETS.cameraZ);
 
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    this.renderer = new THREE.WebGLRenderer({
+      antialias: !this.isMobile,
+      alpha: true,
+      powerPreference: "high-performance",
+    });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.setClearColor(0x1d1c1a, 1);
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.sortObjects = true;
     container.appendChild(this.renderer.domElement);
     this.fx = new AssetFx(this.renderer, this.scene, this.camera, {
@@ -297,6 +384,7 @@ export class BeatAssets {
   }
 
   addFloatDrift(mesh) {
+    if (this.layoutTuning && !this.layoutTuningLivePreview) return;
     const drift = this.getFloatDrift(mesh);
     mesh.position.x += drift.x;
     mesh.position.y += drift.y;
@@ -306,7 +394,7 @@ export class BeatAssets {
 
   applyParallax() {
     const cfg = BEAT_ASSETS.parallax;
-    if (this.reducedMotion || !cfg?.enabled) return;
+    if ((this.layoutTuning && !this.layoutTuningLivePreview) || this.reducedMotion || !cfg?.enabled) return;
 
     this.smoothPointer();
     const scale = this.isMobile ? cfg.mobileScale : 1;
@@ -327,13 +415,512 @@ export class BeatAssets {
   }
 
   resolveBeatLayout(beatIndex) {
-    const beats = this.layoutManifest.beats || [];
-    const direct = beats[beatIndex];
-    if (direct) return direct;
+    const layouts = this.layoutManifest.layouts || this.layoutManifest.beats || [];
+    if (!layouts.length) return { items: [] };
 
-    const pattern = this.layoutManifest.fallbackPattern || ["beat-01"];
-    const patternId = pattern[beatIndex % pattern.length];
-    return beats.find((beat) => beat.id === patternId) ?? beats[0];
+    const byId = new Map(layouts.map((layout) => [layout.id, layout]));
+    const assignments = this.layoutManifest.assignments;
+    if (assignments?.length) {
+      const layoutId =
+        assignments[Math.max(0, Math.min(beatIndex, assignments.length - 1))];
+      return byId.get(layoutId) ?? layouts[0];
+    }
+
+    return layouts[beatIndex] ?? layouts[0];
+  }
+
+  getActiveItems(layout = null, beatIndex = 0) {
+    const resolved = layout ?? this.resolveBeatLayout(beatIndex);
+    if (this.isMobile && resolved?.itemsMobile?.length) {
+      return resolved.itemsMobile;
+    }
+    return resolved?.items ?? [];
+  }
+
+  getLayoutIdForBeat(beatIndex) {
+    const assignments = this.layoutManifest.assignments;
+    if (assignments?.length) {
+      return assignments[Math.max(0, Math.min(beatIndex, assignments.length - 1))];
+    }
+    return this.resolveBeatLayout(beatIndex)?.id ?? `beat-${beatIndex + 1}`;
+  }
+
+  worldToAnchor(x, y) {
+    const { xSpan, ySpan } = getAnchorSpans(this.camera.aspect);
+    return {
+      x: clamp01(x / xSpan + 0.5),
+      y: clamp01(-y / ySpan + 0.5),
+    };
+  }
+
+  snapshotLayoutForBeat(beatIndex) {
+    const layoutId = this.getLayoutIdForBeat(beatIndex);
+    const snapshotKey = this.isMobile ? `${layoutId}::mobile` : layoutId;
+    if (this._layoutSnapshots.has(snapshotKey)) return;
+    const items = this.getActiveItems(null, beatIndex);
+    this._layoutSnapshots.set(snapshotKey, JSON.parse(JSON.stringify(items)));
+  }
+
+  freezeForTuning(beatIndex) {
+    this.layoutTuning = true;
+    this.layoutTuningLivePreview = false;
+    this.tuningBeat = beatIndex;
+    this.introPlayed = true;
+    this.assetTransition = null;
+    this.snapshotLayoutForBeat(beatIndex);
+    this.fx?.clearTrailBuffers();
+    this.showSettled(beatIndex);
+  }
+
+  setTuningLivePreview(enabled, { onProgress } = {}) {
+    if (!this.layoutTuning) return;
+
+    this.layoutTuningLivePreview = enabled;
+    this.tuningPreviewOnProgress = onProgress ?? null;
+
+    if (enabled) {
+      this.tuningPreviewCycleStart = performance.now();
+      this.clearTuningSelection();
+      this.fx?.clearTrailBuffers();
+      return;
+    }
+
+    this.assetTransition = null;
+    this.introPlayed = true;
+    this.fx?.clearTrailBuffers();
+    this.showSettled(this.tuningBeat);
+  }
+
+  updateTuningLivePreview() {
+    if (!this.layoutTuningLivePreview) return;
+
+    const incomingMs = BEAT_ASSETS.incomingDurationMs;
+    const introMs = BEAT_ASSETS.introDurationMs;
+    const holdMs = 700;
+    const beat = this.tuningBeat;
+    const cycleMs = beat === 0 ? introMs + holdMs : incomingMs + holdMs;
+    const elapsed = (performance.now() - this.tuningPreviewCycleStart) % cycleMs;
+
+    if (beat === 0) {
+      this.assetTransition = null;
+      if (elapsed < introMs) {
+        this.introPlayed = false;
+        this.introStartTime = performance.now() - elapsed;
+        this.settledBeat = 0;
+        this.tuningPreviewOnProgress?.({ from: 0, progress: elapsed / introMs, phase: "intro" });
+      } else {
+        this.introPlayed = true;
+        this.showSettled(0);
+        this.tuningPreviewOnProgress?.({ from: 0, progress: 0, phase: "settled" });
+      }
+      return;
+    }
+
+    const from = beat - 1;
+    if (elapsed < incomingMs) {
+      const progress = 0.04 + 0.96 * (elapsed / incomingMs);
+      this.setBeatState(from, progress, 1);
+      this.tuningPreviewOnProgress?.({ from, progress, phase: "incoming" });
+      return;
+    }
+
+    this.assetTransition = null;
+    this.showSettled(beat);
+    this.tuningPreviewOnProgress?.({ from: beat, progress: 0, phase: "settled" });
+  }
+
+  endLayoutTuning() {
+    if (!this.layoutTuning) return;
+    this.setTuningLivePreview(false);
+    this.layoutTuning = false;
+    this.tuningPreviewOnProgress = null;
+    this.fx?.clearTrailBuffers();
+    this.clearTuningSelection();
+  }
+
+  setTuningSelection(beatIndex, itemIndex) {
+    this.tuningSelection = { beatIndex, itemIndex };
+    this.syncSelectionOutline();
+  }
+
+  clearTuningSelection() {
+    this.tuningSelection = null;
+    if (!this.selectionOutline) return;
+    this.selectionOutline.visible = false;
+  }
+
+  syncSelectionOutline() {
+    const selection = this.tuningSelection;
+    if (!this.layoutTuning || this.layoutTuningLivePreview) {
+      if (this.selectionOutline) this.selectionOutline.visible = false;
+      return;
+    }
+
+    if (!selection) return;
+
+    const mesh = this.getMeshesForBeat(selection.beatIndex)[selection.itemIndex];
+    if (!mesh?.visible) {
+      if (this.selectionOutline) this.selectionOutline.visible = false;
+      return;
+    }
+
+    const { width, height } = mesh.geometry.parameters ?? {};
+    if (!width || !height) return;
+
+    const pad = 1.05;
+    if (!this.selectionOutline) {
+      const outlineGeo = new THREE.EdgesGeometry(new THREE.PlaneGeometry(1, 1));
+      const outlineMat = new THREE.LineBasicMaterial({
+        color: 0xfcfcf5,
+        transparent: true,
+        opacity: 0.9,
+        depthTest: false,
+        depthWrite: false,
+      });
+      this.selectionOutline = new THREE.LineSegments(outlineGeo, outlineMat);
+      this.selectionOutline.frustumCulled = false;
+      this.selectionOutline.renderOrder = 2000;
+      this.scene.add(this.selectionOutline);
+    }
+
+    this.selectionOutline.position.copy(mesh.position);
+    this.selectionOutline.position.z = mesh.position.z + 0.02;
+    this.selectionOutline.rotation.z = mesh.rotation.z;
+    this.selectionOutline.scale.set(mesh.scale.x * width * pad, mesh.scale.y * height * pad, 1);
+    this.selectionOutline.visible = true;
+  }
+
+  setLayoutTuningOptions({ skipSafeZoneNudge = false } = {}) {
+    this.skipSafeZoneNudge = skipSafeZoneNudge;
+    for (const meshes of this.beatMeshes.values()) {
+      for (const mesh of meshes) {
+        this.rebuildMeshLayout(mesh);
+      }
+    }
+    this.updateAllMeshes();
+  }
+
+  getMeshesForBeat(beatIndex) {
+    return this.beatMeshes.get(beatIndex) ?? [];
+  }
+
+  pickMeshAt(clientX, clientY, beatIndex = this.tuningBeat) {
+    const el = this.renderer.domElement;
+    const rect = el.getBoundingClientRect();
+    if (!rect.width || !rect.height) return null;
+
+    this._pickNdc.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+    this._pickNdc.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+    this._raycaster.setFromCamera(this._pickNdc, this.camera);
+
+    const meshes = this.getMeshesForBeat(beatIndex).filter((mesh) => mesh.visible);
+    const hits = this._raycaster.intersectObjects(meshes, false);
+    if (!hits.length) return null;
+
+    hits.sort((a, b) => {
+      const order = b.object.renderOrder - a.object.renderOrder;
+      return order !== 0 ? order : a.distance - b.distance;
+    });
+    return hits[0]?.object ?? null;
+  }
+
+  applyItemPatch(beatIndex, itemIndex, patch) {
+    const meshes = this.getMeshesForBeat(beatIndex);
+    const mesh = meshes[itemIndex];
+    if (!mesh) return;
+
+    const item = mesh.userData.layout.item;
+    const prevBlend = item.blendMode;
+    const prevAssetId = item.assetId;
+    if (patch.anchor) {
+      item.anchor = { ...(item.anchor ?? { x: 0.5, y: 0.5 }), ...patch.anchor };
+    }
+    for (const [key, value] of Object.entries(patch)) {
+      if (key === "anchor") continue;
+      item[key] = value;
+    }
+
+    const layoutId = this.getLayoutIdForBeat(beatIndex);
+    for (let beat = 0; beat < this.beatCount; beat++) {
+      if (this.getLayoutIdForBeat(beat) !== layoutId) continue;
+      const beatMeshes = this.getMeshesForBeat(beat);
+      const beatMesh = beatMeshes[itemIndex];
+      if (!beatMesh) continue;
+      beatMesh.userData.layout.item = item;
+      this.rebuildMeshLayout(beatMesh);
+    }
+
+    this.updateAllMeshes();
+
+    if (
+      !this.layoutTuning &&
+      (patch.blendMode != null || patch.opacity != null || patch.assetId != null) &&
+      (patch.blendMode !== prevBlend || patch.assetId !== prevAssetId)
+    ) {
+      this.fx?.clearTrailBuffers();
+    }
+  }
+
+  moveItemByWorldDelta(beatIndex, itemIndex, dx, dy) {
+    const mesh = this.getMeshesForBeat(beatIndex)[itemIndex];
+    if (!mesh) return;
+
+    const home = mesh.userData.layout.home;
+    const next = this.worldToAnchor(home.x + dx, home.y + dy);
+    this.applyItemPatch(beatIndex, itemIndex, { anchor: next });
+  }
+
+  rebuildMeshLayout(mesh) {
+    const { item, entry } = mesh.userData.layout;
+    const tex = mesh.material.map;
+    if (!tex?.image) return;
+
+    const { width, height } = resolveSize(
+      entry,
+      tex.image.width,
+      tex.image.height,
+      this.isMobile,
+      item.scale ?? 1
+    );
+
+    mesh.geometry.dispose();
+    mesh.geometry = new THREE.PlaneGeometry(width, height);
+
+    const visual = resolveItemVisual(item);
+    applyBlendToMaterial(mesh.material, visual.blendMode, visual.opacity);
+    mesh.userData.layout.targetOpacity = visual.opacity;
+    mesh.userData.layout.home = this.resolveHome(item, width, height);
+  }
+
+  exportLayoutItems(beatIndex) {
+    const meshes = this.getMeshesForBeat(beatIndex);
+    const round = (value) => Math.round(value * 1000) / 1000;
+
+    return meshes.map((mesh) => {
+      const item = mesh.userData.layout.item;
+      const visual = resolveItemVisual(item);
+      const exported = {
+        assetId: item.assetId,
+        anchor: {
+          x: round(item.anchor?.x ?? 0.5),
+          y: round(item.anchor?.y ?? 0.5),
+        },
+        rotation: round(item.rotation ?? 0),
+        z: round(item.z ?? 0),
+        scale: round(item.scale ?? 1),
+        blendMode: visual.blendMode,
+        opacity: round(visual.opacity),
+      };
+      return exported;
+    });
+  }
+
+  resetLayoutForBeat(beatIndex) {
+    const layoutId = this.getLayoutIdForBeat(beatIndex);
+    const snapshotKey = this.isMobile ? `${layoutId}::mobile` : layoutId;
+    const snapshot = this._layoutSnapshots.get(snapshotKey);
+    if (!snapshot) return;
+
+    const layout = this.resolveBeatLayout(beatIndex);
+    const items = this.getActiveItems(layout, beatIndex);
+    items.splice(0, items.length, ...JSON.parse(JSON.stringify(snapshot)));
+
+    for (let beat = 0; beat < this.beatCount; beat++) {
+      if (this.getLayoutIdForBeat(beat) !== layoutId) continue;
+      this.rebuildBeatMeshes(beat);
+    }
+
+    this.updateAllMeshes();
+    if (this.layoutTuning && this.tuningBeat === beatIndex) {
+      this.showSettled(beatIndex);
+    }
+  }
+
+  getManifestAssetIds() {
+    return (this.manifest.assets || [])
+      .filter((entry) => entry.enabled !== false)
+      .map((entry) => entry.id);
+  }
+
+  getBeatsForLayout(layoutId) {
+    const beats = [];
+    for (let beat = 0; beat < this.beatCount; beat++) {
+      if (this.getLayoutIdForBeat(beat) === layoutId) beats.push(beat);
+    }
+    return beats;
+  }
+
+  updateLayoutSnapshot(layoutId) {
+    const layout = (this.layoutManifest.layouts || []).find((entry) => entry.id === layoutId);
+    if (!layout) return;
+    const snapshotKey = this.isMobile ? `${layoutId}::mobile` : layoutId;
+    const items = this.isMobile && layout.itemsMobile?.length ? layout.itemsMobile : layout.items;
+    this._layoutSnapshots.set(snapshotKey, JSON.parse(JSON.stringify(items ?? [])));
+  }
+
+  async ensureTexture(assetId) {
+    if (this.textureById.has(assetId)) return true;
+
+    const entry = this.entryById.get(assetId);
+    if (!entry) return false;
+
+    try {
+      const loader = new THREE.TextureLoader();
+      const tex = await loader.loadAsync(assetUrl(entry.src));
+      configureLoadedTexture(tex, entry);
+      this.textureById.set(assetId, tex);
+      return true;
+    } catch (err) {
+      console.error(`[BeatAssets] Failed to load: ${assetId}`, err);
+      return false;
+    }
+  }
+
+  disposeMesh(mesh) {
+    this.scene.remove(mesh);
+    mesh.geometry?.dispose();
+    mesh.material?.dispose();
+  }
+
+  createMeshForItem(beatIndex, itemIndex, item, isMobile = this.isMobile) {
+    const entry = this.entryById.get(item.assetId);
+    const tex = this.textureById.get(item.assetId);
+    if (!entry || !tex) return null;
+
+    const { width, height } = resolveSize(
+      entry,
+      tex.image.width,
+      tex.image.height,
+      isMobile,
+      item.scale ?? 1
+    );
+    const visual = resolveItemVisual(item);
+
+    const mat = new THREE.MeshBasicMaterial({
+      map: tex,
+      opacity: 0,
+      side: THREE.DoubleSide,
+    });
+    applyBlendToMaterial(mat, visual.blendMode, visual.opacity);
+
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(width, height), mat);
+    mesh.visible = false;
+    mesh.userData.layout = {
+      beatIndex,
+      itemIndex,
+      item,
+      entry,
+      targetOpacity: visual.opacity,
+      home: this.resolveHome(item, width, height),
+    };
+    mesh.userData.float = resolveFloatMotion(itemIndex, beatIndex);
+    this.scene.add(mesh);
+    return mesh;
+  }
+
+  rebuildBeatMeshes(beatIndex) {
+    const meshes = this.getMeshesForBeat(beatIndex);
+    for (const mesh of meshes) {
+      this.disposeMesh(mesh);
+    }
+
+    const layout = this.resolveBeatLayout(beatIndex);
+    const items = this.getActiveItems(layout, beatIndex);
+    const nextMeshes = [];
+
+    for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+      const item = items[itemIndex];
+      const mesh = this.createMeshForItem(beatIndex, itemIndex, item);
+      if (mesh) nextMeshes.push(mesh);
+    }
+
+    this.beatMeshes.set(beatIndex, nextMeshes);
+  }
+
+  async addLayoutItem(beatIndex, assetId) {
+    if (!this.entryById.has(assetId)) return false;
+    if (!(await this.ensureTexture(assetId))) return false;
+
+    const layoutId = this.getLayoutIdForBeat(beatIndex);
+    const layout = this.resolveBeatLayout(beatIndex);
+    const items = this.getActiveItems(layout, beatIndex);
+    if (this.isMobile && !layout.itemsMobile) {
+      layout.itemsMobile = items;
+    }
+    const newItem = {
+      assetId,
+      anchor: { x: 0.5, y: 0.5 },
+      rotation: 0,
+      z: 0,
+      scale: 1,
+    };
+    items.push(newItem);
+
+    for (const beat of this.getBeatsForLayout(layoutId)) {
+      const meshes = this.getMeshesForBeat(beat);
+      const itemIndex = items.length - 1;
+      const mesh = this.createMeshForItem(beat, itemIndex, newItem);
+      if (mesh) meshes.push(mesh);
+      this.beatMeshes.set(beat, meshes);
+    }
+
+    if (this.layoutTuning) this.updateLayoutSnapshot(layoutId);
+    this.updateAllMeshes();
+    if (this.layoutTuning) this.showSettled(beatIndex);
+    return true;
+  }
+
+  removeLayoutItem(beatIndex, itemIndex) {
+    const layoutId = this.getLayoutIdForBeat(beatIndex);
+    const layout = this.resolveBeatLayout(beatIndex);
+    const items = this.getActiveItems(layout, beatIndex);
+    if (itemIndex < 0 || itemIndex >= items.length) return false;
+
+    items.splice(itemIndex, 1);
+
+    for (const beat of this.getBeatsForLayout(layoutId)) {
+      const meshes = this.getMeshesForBeat(beat);
+      const mesh = meshes[itemIndex];
+      if (mesh) this.disposeMesh(mesh);
+      meshes.splice(itemIndex, 1);
+      meshes.forEach((entry, index) => {
+        entry.userData.layout.itemIndex = index;
+        entry.userData.layout.item = items[index];
+      });
+      this.beatMeshes.set(beat, meshes);
+    }
+
+    if (this.layoutTuning) this.updateLayoutSnapshot(layoutId);
+    this.updateAllMeshes();
+    if (this.layoutTuning) this.showSettled(beatIndex);
+    return true;
+  }
+
+  async swapLayoutItemAsset(beatIndex, itemIndex, assetId) {
+    if (!this.entryById.has(assetId)) return false;
+    if (!(await this.ensureTexture(assetId))) return false;
+
+    const layoutId = this.getLayoutIdForBeat(beatIndex);
+    const layout = this.resolveBeatLayout(beatIndex);
+    const items = this.getActiveItems(layout, beatIndex);
+    const item = items[itemIndex];
+    if (!item) return false;
+
+    item.assetId = assetId;
+    const entry = this.entryById.get(assetId);
+    const tex = this.textureById.get(assetId);
+
+    for (const beat of this.getBeatsForLayout(layoutId)) {
+      const mesh = this.getMeshesForBeat(beat)[itemIndex];
+      if (!mesh) continue;
+      mesh.userData.layout.item = item;
+      mesh.userData.layout.entry = entry;
+      mesh.material.map = tex;
+      this.rebuildMeshLayout(mesh);
+    }
+
+    this.updateAllMeshes();
+    return true;
   }
 
   async load() {
@@ -341,8 +928,12 @@ export class BeatAssets {
     const isMobile = window.innerWidth < 768;
     const usedIds = new Set();
 
-    for (const beat of this.layoutManifest.beats || []) {
-      for (const item of beat.items || []) {
+    const layouts = this.layoutManifest.layouts || this.layoutManifest.beats || [];
+    for (const layout of layouts) {
+      for (const item of layout.items || []) {
+        usedIds.add(item.assetId);
+      }
+      for (const item of layout.itemsMobile || []) {
         usedIds.add(item.assetId);
       }
     }
@@ -356,7 +947,7 @@ export class BeatAssets {
       }
       try {
         const tex = await loader.loadAsync(assetUrl(entry.src));
-        tex.colorSpace = THREE.SRGBColorSpace;
+        configureLoadedTexture(tex, entry);
         this.textureById.set(assetId, tex);
       } catch (err) {
         console.error(`[BeatAssets] Failed to load: ${assetId}`, err);
@@ -376,70 +967,29 @@ export class BeatAssets {
 
   buildBeatMeshes(isMobile) {
     for (let beatIndex = 0; beatIndex < this.beatCount; beatIndex++) {
-      const layout = this.resolveBeatLayout(beatIndex);
-      const meshes = [];
-
-      for (let itemIndex = 0; itemIndex < (layout.items || []).length; itemIndex++) {
-        const item = layout.items[itemIndex];
-        const entry = this.entryById.get(item.assetId);
-        const tex = this.textureById.get(item.assetId);
-        if (!entry || !tex) continue;
-
-        const { width, height } = resolveSize(
-          entry,
-          tex.image.width,
-          tex.image.height,
-          isMobile,
-          item.scale ?? 1
-        );
-        const blendMode = item.blendMode ?? entry.blendMode ?? "normal";
-        const blend = BLEND_MAP[blendMode]?.() ?? BLEND_MAP.normal();
-        const targetOpacity = item.opacity ?? entry.opacity ?? 1;
-
-        const mat = new THREE.MeshBasicMaterial({
-          map: tex,
-          transparent: true,
-          blending: blend.blending,
-          premultipliedAlpha: blend.blending === THREE.MultiplyBlending,
-          opacity: 0,
-          depthWrite: false,
-          depthTest: blend.blending === THREE.NormalBlending,
-          side: THREE.DoubleSide,
-        });
-
-        const mesh = new THREE.Mesh(new THREE.PlaneGeometry(width, height), mat);
-        mesh.visible = false;
-        mesh.userData.layout = {
-          beatIndex,
-          itemIndex,
-          item,
-          entry,
-          targetOpacity,
-          home: this.resolveHome(item, width, height),
-        };
-        mesh.userData.float = resolveFloatMotion(itemIndex, beatIndex);
-
-        this.scene.add(mesh);
-        meshes.push(mesh);
-      }
-
-      this.beatMeshes.set(beatIndex, meshes);
+      this.isMobile = isMobile;
+      this.rebuildBeatMeshes(beatIndex);
     }
   }
 
   resolveHome(item, width, height) {
-    const world = anchorToWorld(item.anchor);
+    const world = anchorToWorld(item.anchor, this.camera.aspect);
     const halfW = width / (this.container.clientWidth || 1);
     const halfH = height / (this.container.clientHeight || 1);
-    const nudged = nudgeFromSafeZone(
-      world.x,
-      world.y,
-      halfW,
-      halfH,
-      this.camera,
-      this.container.clientWidth,
-      this.container.clientHeight
-    );
+    // Mobile layouts are hand-authored for a narrow viewport. Safe-zone
+    // nudging pushes edge pieces off-screen on phones.
+    const nudged =
+      this.skipSafeZoneNudge || this.isMobile
+        ? { x: world.x, y: world.y }
+        : nudgeFromSafeZone(
+            world.x,
+            world.y,
+            halfW,
+            halfH,
+            this.camera,
+            this.container.clientWidth,
+            this.container.clientHeight
+          );
 
     const homePos = {
       x: nudged.x,
@@ -487,15 +1037,19 @@ export class BeatAssets {
 
   beginAssetTransition(from, to, forward) {
     const incomingBeat = forward ? to : from;
+    const leavingBeat = forward ? from : to;
     const incomingRole =
       incomingBeat === 0 ? "incoming" : forward ? "incoming" : "return";
+    const sharedLayout =
+      this.getLayoutIdForBeat(incomingBeat) === this.getLayoutIdForBeat(leavingBeat);
 
     this.assetTransition = {
       startTime: performance.now(),
       incomingBeat,
-      leavingBeat: forward ? from : to,
+      leavingBeat,
       incomingRole,
       leavingRole: forward ? "outgoing" : "retreat",
+      sharedLayout,
     };
   }
 
@@ -516,6 +1070,7 @@ export class BeatAssets {
 
   getMotionIntensity() {
     if (this.reducedMotion) return 0;
+    if (this.layoutTuning && !this.layoutTuningLivePreview) return 0;
 
     let intensity = 0;
     const k = BEAT_ASSETS.incomingWarpRate;
@@ -634,6 +1189,16 @@ export class BeatAssets {
   }
 
   updateAllMeshes() {
+    if (this.layoutTuning && !this.layoutTuningLivePreview) {
+      for (const [beatIndex, meshes] of this.beatMeshes) {
+        for (const mesh of meshes) {
+          const role = beatIndex === this.tuningBeat ? "settled" : "hidden";
+          this.applyMeshState(mesh, role, { incomingT: 1, leavingT: 1 });
+        }
+      }
+      return;
+    }
+
     const introActive = !this.introPlayed && this.settledBeat === 0;
     const introT = introActive ? this.getIntroProgress() : 1;
     const incomingT = this.assetTransition ? this.getIncomingProgress() : 1;
@@ -646,8 +1211,14 @@ export class BeatAssets {
         if (introActive) {
           if (beatIndex === 0) role = "incoming";
         } else if (this.assetTransition) {
-          const { incomingBeat, leavingBeat, incomingRole, leavingRole } = this.assetTransition;
-          if (beatIndex === leavingBeat && leavingT < 1) {
+          const { incomingBeat, leavingBeat, incomingRole, leavingRole, sharedLayout } =
+            this.assetTransition;
+
+          if (sharedLayout) {
+            if (beatIndex === incomingBeat) {
+              role = incomingRole;
+            }
+          } else if (beatIndex === leavingBeat && leavingT < 1) {
             role = leavingRole;
           } else if (beatIndex === incomingBeat) {
             role = incomingRole;
@@ -732,42 +1303,54 @@ export class BeatAssets {
   }
 
   resize() {
-    const w = this.container.clientWidth;
-    const h = this.container.clientHeight;
-    this.isMobile = w < 768;
+    const w = this.container.clientWidth || 1;
+    const h = this.container.clientHeight || 1;
+    const nextMobile = w < 768;
+    const layoutChanged = nextMobile !== this.isMobile;
+    this.isMobile = nextMobile;
+
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(w, h);
     this.fx?.setSize(w, h);
 
-    const isMobile = w < 768;
-    for (const meshes of this.beatMeshes.values()) {
-      for (const mesh of meshes) {
-        const { item, entry } = mesh.userData.layout;
-        const tex = mesh.material.map;
-        const { width, height } = resolveSize(
-          entry,
-          tex.image.width,
-          tex.image.height,
-          isMobile,
-          item.scale ?? 1
-        );
-        mesh.geometry.dispose();
-        mesh.geometry = new THREE.PlaneGeometry(width, height);
-        mesh.userData.layout.home = this.resolveHome(item, width, height);
+    if (layoutChanged) {
+      this.buildBeatMeshes(nextMobile);
+    } else {
+      for (const meshes of this.beatMeshes.values()) {
+        for (const mesh of meshes) {
+          const { item, entry } = mesh.userData.layout;
+          const tex = mesh.material.map;
+          if (!tex?.image) continue;
+          const { width, height } = resolveSize(
+            entry,
+            tex.image.width,
+            tex.image.height,
+            nextMobile,
+            item.scale ?? 1
+          );
+          mesh.geometry.dispose();
+          mesh.geometry = new THREE.PlaneGeometry(width, height);
+          mesh.userData.layout.home = this.resolveHome(item, width, height);
+        }
       }
     }
     this.updateAllMeshes();
   }
 
   render() {
-    if (!this.introPlayed && this.settledBeat === 0 && this.getIntroProgress() >= 1) {
-      this.finishIntro();
-    } else if (this.assetTransition && this.getIncomingProgress() >= 1) {
-      this.finishAssetTransition();
+    if (this.layoutTuningLivePreview) {
+      this.updateTuningLivePreview();
+    } else if (!this.layoutTuning) {
+      if (!this.introPlayed && this.settledBeat === 0 && this.getIntroProgress() >= 1) {
+        this.finishIntro();
+      } else if (this.assetTransition && this.getIncomingProgress() >= 1) {
+        this.finishAssetTransition();
+      }
     }
 
     this.updateAllMeshes();
+    this.syncSelectionOutline();
     this.applyParallax();
     this.fx?.setMotionIntensity(this.getMotionIntensity());
     this.fx?.render();
@@ -778,6 +1361,12 @@ export class BeatAssets {
     window.removeEventListener("pointermove", this._onPointerMove);
     window.removeEventListener("pointerleave", this._onPointerLeave);
     this.fx?.dispose();
+    if (this.selectionOutline) {
+      this.scene.remove(this.selectionOutline);
+      this.selectionOutline.geometry.dispose();
+      this.selectionOutline.material.dispose();
+      this.selectionOutline = null;
+    }
     for (const meshes of this.beatMeshes.values()) {
       for (const mesh of meshes) {
         mesh.geometry.dispose();

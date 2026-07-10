@@ -19,6 +19,31 @@
     <link rel="stylesheet" href="/src/styles/contact-modal.css" />
   </head>
   <body tabindex="-1">
+    <svg class="visually-hidden" aria-hidden="true" focusable="false">
+      <symbol id="icon-about" viewBox="0 0 22.1543 24.7134" fill="none">
+        <path d="M11.0802 0V5.0431" stroke="#FCFCF5" transform="translate(4.9265 -3.93355) rotate(25.7143)" />
+        <path d="M11.0802 0V5.0431" stroke="#FCFCF5" transform="translate(11.0718 -5.34002) rotate(51.4286)" />
+        <path d="M11.0802 0V5.0431" stroke="#FCFCF5" transform="translate(17.2188 -3.94086) rotate(77.1429)" />
+        <path d="M11.0802 0V5.0431" stroke="#FCFCF5" transform="translate(22.15 -0.0131773) rotate(102.857)" />
+        <path d="M11.0802 0V5.0431" stroke="#FCFCF5" transform="translate(24.8887 5.6651) rotate(128.571)" />
+        <path d="M11.0802 0V5.0431" stroke="#FCFCF5" transform="translate(24.8924 11.9693) rotate(154.286)" />
+        <path d="M11.0802 0V5.0431" stroke="#FCFCF5" transform="translate(22.1605 17.6508) rotate(-180)" />
+        <path d="M11.0802 0V5.0431" stroke="#FCFCF5" transform="translate(17.234 21.5844) rotate(-154.286)" />
+        <path d="M11.0802 0V5.0431" stroke="#FCFCF5" transform="translate(11.0887 22.9909) rotate(-128.571)" />
+        <path d="M11.0802 0V5.0431" stroke="#FCFCF5" transform="translate(4.94168 21.5917) rotate(-102.857)" />
+        <path d="M11.0802 0V5.0431" stroke="#FCFCF5" transform="translate(0.0105077 17.664) rotate(-77.1429)" />
+        <path d="M11.0802 0V5.0431" stroke="#FCFCF5" transform="translate(-2.72817 11.9857) rotate(-51.4286)" />
+        <path d="M11.0802 0V5.0431" stroke="#FCFCF5" transform="translate(-2.73192 5.68153) rotate(-25.7143)" />
+        <path
+          d="M22.1543 20.9488L11.0771 24.7125V24.7134L0 20.9488L0 4.78472L11.0762 8.54839L22.1543 4.78472V20.9488Z"
+          fill="#1D1C1A"
+          stroke="#FCFCF5"
+          stroke-width="1"
+          stroke-linejoin="round"
+        />
+        <path d="M11.0772 0V24.4632" stroke="#FCFCF5" />
+      </symbol>
+    </svg>
     <div id="app">
       <div id="webgl-root" aria-hidden="true"></div>
 
@@ -36,31 +61,12 @@
               <div class="story-progress__fill"></div>
             </div>
           </div>
-          <button
-            type="button"
-            id="story-restart"
-            class="story-restart"
-            hidden
-            aria-hidden="true"
-            aria-label="Start story over"
-          >
-            <svg class="story-restart__icon" viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M12 5V2L7 7l5 5V9c2.76 0 5 2.24 5 5a5 5 0 1 1-9.9-1"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.25"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
-          </button>
         </div>
         <div id="story-a11y" class="visually-hidden" aria-live="polite"></div>
       </div>
 
       <header class="chrome-logo">
-        <img src="/brand/outland-logo.svg" alt="Outland" width="205" height="45" />
+        <img src="/brand/outland-mark.svg" alt="Outland" width="45" height="45" />
       </header>
 
       <aside class="chrome-rail" id="chrome-rail" aria-label="About Outland" aria-expanded="false">
@@ -73,19 +79,12 @@
             aria-controls="rail-panel"
             aria-label="About Outland"
           >
-            <img src="/assets/rail/icon-about.svg" alt="" width="40" height="40" />
+            <svg class="rail-toggle__icon" aria-hidden="true" focusable="false">
+              <use href="#icon-about" />
+            </svg>
           </button>
 
           <div class="rail-panel" id="rail-panel" hidden>
-            <button
-              type="button"
-              class="rail-close"
-              data-rail-close
-              aria-label="Close about panel"
-            >
-              <span aria-hidden="true">×</span>
-            </button>
-
             <div class="rail-panel__scroll">
               <header class="rail-clocks">
                 <p id="rail-clock-us" class="rail-clock"></p>
@@ -170,9 +169,10 @@
           aria-expanded="false"
           aria-controls="rail-panel"
           aria-label="About Outland"
-          hidden
         >
-          <img src="/assets/rail/icon-about.svg" alt="" width="40" height="40" />
+          <svg class="rail-toggle__icon" aria-hidden="true" focusable="false">
+            <use href="#icon-about" />
+          </svg>
         </button>
       </footer>
 

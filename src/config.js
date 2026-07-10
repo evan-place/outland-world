@@ -17,8 +17,8 @@ export function storyTextClassName(_style) {
 }
 
 export const SCROLL = {
-  /** Scroll kick — full transition wall time comes from STORY_TRANSITION.beatDurationMs. */
-  transitionKick: 0.2,
+  /** Scroll kick — delay before blend motion starts (0 = no jump from settled). */
+  transitionKick: 0,
   wheelThreshold: 14,
   reverseWheelThreshold: 8,
   /** Single wheel tick above this fires immediately (trackpad flicks). */
@@ -49,28 +49,37 @@ export const AUTO_PLAY = {
 /** Lens viewport text transition — vertical travel + rim distortion. */
 export const STORY_TRANSITION = {
   /** Base padding; auto-expanded so text clears below/above the viewport. */
-  travelPadRatio: 1.2,
-  travelMargin: 0.08,
+  travelPadRatio: 1.6,
+  travelMargin: 0.1,
+  /**
+   * Extra visible canvas height as a fraction of text block height (each side).
+   * Lets warp/smear bands render beyond the text box instead of clipping to it.
+   */
+  viewportPadRatio: 0.46,
   /** Higher = text lingers in warp bands longer (assets unaffected). */
-  travelEasePower: 2.75,
+  travelEasePower: 2.35,
   /** Shared wall-clock for intro + beat-to-beat text lens travel (all directions). */
   beatDurationMs: 1600,
-  mixEdgeLow: 0.32,
-  mixEdgeHigh: 0.72,
+  mixEdgeLow: 0.36,
+  mixEdgeHigh: 0.76,
   lensCenterX: 0.5,
   lensCenterY: 0.5,
   /** Match half-viewport so screen top/bottom sit on the lens rim. */
-  lensRadiusX: 0.54,
-  lensRadiusY: 0.58,
-  lensStrength: 1.6,
+  lensRadiusX: 0.56,
+  lensRadiusY: 0.3,
+  lensStrength: 0.45,
   /** Undistorted band height as a fraction of the viewport. */
-  safeZoneViewportRatio: 0.82,
-  /** Warp ramps from safe edge to lens rim; power <1 spreads distortion across the band. */
-  warpBandPower: 1.12,
+  safeZoneViewportRatio: 0.84,
+  /** Warp ramps from safe edge to lens rim; power >1 keeps the center stable. */
+  warpBandPower: 1.43,
+  /** Distortion exponent — higher confines geometric warp to the outer rim. */
+  distortRimPower: 1.88,
+  /** Smear exponent — lower lets fluid trailing spread slightly into the warp band. */
+  smearRimPower: 0.76,
   safeInnerX: 0.68,
   safeOuterX: 0.98,
-  motionSmear: 0.9,
-  smearLength: 0.15,
+  motionSmear: 1.08,
+  smearLength: 0.18,
 };
 
 export function storyTravelEase(t) {

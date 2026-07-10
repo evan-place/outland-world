@@ -3,7 +3,6 @@ import beatLayouts from "./data/beat-layouts.json";
 import storyData from "./data/story.json";
 import { initAmbientAudio } from "./audio/ambient-audio.js";
 import { initRail } from "./chrome/rail.js";
-import { initContactModal } from "./contact/contact-modal.js";
 import { BeatAssets } from "./scene/beat-assets.js";
 import { StoryText } from "./scene/story-text.js";
 import { initStoryScroll } from "./scroll/story-scroll.js";
@@ -19,16 +18,40 @@ function main() {
   const storyText = new StoryText(storyTextA, storyTextB, storyCanvas, beats);
 
   initAmbientAudio();
-  initContactModal();
   initRail();
 
-  initStoryScroll({
+  const contactOpen = document.getElementById("contact-open");
+  let contactModal = null;
+  let contactLoading = null;
+  const ensureContactModal = (openOnReady = false) => {
+    if (contactModal) {
+      if (openOnReady) contactModal.open();
+      return Promise.resolve(contactModal);
+    }
+    if (!contactLoading) {
+      contactLoading = import("./contact/contact-modal.js").then(({ initContactModal }) => {
+        contactModal = initContactModal();
+        return contactModal;
+      });
+    }
+    return contactLoading.then((modal) => {
+      if (openOnReady) modal?.open();
+      return modal;
+    });
+  };
+  contactOpen?.addEventListener("click", () => {
+    void ensureContactModal(true);
+  });
+  if ("requestIdleCallback" in window) {
+    requestIdleCallback(() => ensureContactModal(), { timeout: 4000 });
+  } else {
+    window.setTimeout(() => ensureContactModal(), 3000);
+  }
+
+  const storyScroll = initStoryScroll({
     beats,
     getAssetSettleDelayMs: () => beatAssets.getSettleRemainingMs(),
-    onRestart: () => {
-      storyText.restartFromBeginning();
-      beatAssets.restartFromBeginning();
-    },
+    onReturnToStart: () => beatAssets.restartFromBeginning(),
     onBeatChange: (fromIndex, progress, direction = 1) => {
       storyText.setBeatState(fromIndex, progress, direction);
       beatAssets.setBeatState(fromIndex, progress, direction);
@@ -37,9 +60,38 @@ function main() {
 
   window.addEventListener("resize", () => storyText.resize());
 
+  // Dev asset layout tuner — re-enable when tuning beat layouts.
+  // if (import.meta.env.DEV) {
+  //   beatAssets.loadPromise?.then(() => {
+  //     import("./dev/asset-layout-tuner.js").then(({ initAssetLayoutTuner }) => {
+  //       initAssetLayoutTuner({
+  //         beatAssets,
+  //         storyText,
+  //         storyScroll,
+  //         beats,
+  //         assets: assetsManifest.assets,
+  //       });
+  //     });
+  //   });
+  // }
+
+  // Dev lens tuner — re-enable when tuning shader params.
+  // if (import.meta.env.DEV) {
+  //   import("./dev/lens-tuner.js").then(({ initLensTuner }) => {
+  //     initLensTuner({ storyText });
+  //   });
+  // }
+
   document.body.focus({ preventScroll: true });
 
+  let running = true;
+  document.addEventListener("visibilitychange", () => {
+    running = document.visibilityState === "visible";
+    if (running) requestAnimationFrame(loop);
+  });
+
   function loop() {
+    if (!running) return;
     beatAssets.render();
     requestAnimationFrame(loop);
   }

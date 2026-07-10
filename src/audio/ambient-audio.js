@@ -10,7 +10,7 @@ export function initAmbientAudio() {
 
   const audio = new Audio(assetUrl(TRACK_SRC));
   audio.loop = true;
-  audio.preload = "auto";
+  audio.preload = "none";
   audio.volume = DEFAULT_VOLUME;
 
   let muted = true;
@@ -24,6 +24,9 @@ export function initAmbientAudio() {
   const startPlayback = async () => {
     if (muted) return false;
     try {
+      if (audio.readyState < HTMLMediaElement.HAVE_FUTURE_DATA) {
+        audio.load();
+      }
       audio.muted = false;
       await audio.play();
       return true;

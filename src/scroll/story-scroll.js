@@ -1,11 +1,10 @@
 import gsap from "gsap";
 import { SCROLL, AUTO_PLAY, STORY_TRANSITION } from "../config.js";
 
-export function initStoryScroll({ beats, onBeatChange, onRestart, getAssetSettleDelayMs }) {
+export function initStoryScroll({ beats, onBeatChange, getAssetSettleDelayMs, onReturnToStart }) {
   const a11y = document.getElementById("story-a11y");
   const progressEl = document.getElementById("story-progress");
   const progressFill = progressEl?.querySelector(".story-progress__fill");
-  const restartEl = document.getElementById("story-restart");
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const beatCount = beats.length;
 
@@ -29,6 +28,10 @@ export function initStoryScroll({ beats, onBeatChange, onRestart, getAssetSettle
   let playbackStart = null;
   let timelineTotalMs = 0;
   let dwellStartedAt = performance.now();
+  let transitionFromBeat = 0;
+  let transitionTargetBeat = 0;
+  let lastTransitionT = 0;
+  let transitionGoingForward = true;
 
   const computeTimelineTotal = () => {
     if (beatCount <= 1) return timing.introDwell + timing.beatDwellLast;
@@ -64,11 +67,30 @@ export function initStoryScroll({ beats, onBeatChange, onRestart, getAssetSettle
     progressFill.style.width = `${value * 100}%`;
   };
 
+  let progressIntroPlayed = false;
+
   const engageProgress = () => {
     if (!progressEl) return;
     progressEl.hidden = false;
     progressEl.setAttribute("aria-hidden", "false");
-    progressEl.classList.add("story-progress--visible");
+
+    if (!progressIntroPlayed) {
+      progressIntroPlayed = true;
+      if (reduced) {
+        progressEl.classList.add("story-progress--visible");
+      } else {
+        progressEl.classList.add("story-progress--enter");
+        const track = progressEl.querySelector(".story-progress__track");
+        const finishIntro = () => {
+          progressEl.classList.remove("story-progress--enter");
+          progressEl.classList.add("story-progress--visible");
+        };
+        track?.addEventListener("animationend", finishIntro, { once: true });
+      }
+    } else {
+      progressEl.classList.add("story-progress--visible");
+    }
+
     updatePlaybackUi();
   };
 
@@ -81,18 +103,28 @@ export function initStoryScroll({ beats, onBeatChange, onRestart, getAssetSettle
     return performance.now() - dwellStartedAt >= dwellForBeat(currentBeat);
   };
 
-  const updatePlaybackUi = () => {
-    const atEnd = isStoryComplete();
-    if (progressEl) {
-      progressEl.hidden = atEnd;
-      progressEl.setAttribute("aria-hidden", atEnd ? "true" : "false");
-      if (!atEnd && playbackStart != null) {
-        progressEl.classList.add("story-progress--visible");
-      }
+  const shouldHideProgress = () => {
+    if (currentBeat >= beatCount - 1 && phase === "settled") return true;
+    if (
+      phase === "transitioning" &&
+      transitionGoingForward &&
+      transitionTargetBeat >= beatCount - 1
+    ) {
+      return true;
     }
-    if (restartEl) {
-      restartEl.hidden = !atEnd;
-      restartEl.setAttribute("aria-hidden", atEnd ? "false" : "true");
+    return false;
+  };
+
+  const updatePlaybackUi = () => {
+    const hideProgress = shouldHideProgress();
+    if (progressEl) {
+      progressEl.hidden = hideProgress;
+      progressEl.setAttribute("aria-hidden", hideProgress ? "true" : "false");
+      if (!hideProgress && playbackStart != null) {
+        progressEl.classList.add("story-progress--visible");
+      } else {
+        progressEl.classList.remove("story-progress--visible");
+      }
     }
   };
 
@@ -161,11 +193,6 @@ export function initStoryScroll({ beats, onBeatChange, onRestart, getAssetSettle
     playbackStart = performance.now();
     tickPlayback();
   };
-
-  let transitionFromBeat = 0;
-  let transitionTargetBeat = 0;
-  let lastTransitionT = 0;
-  let transitionGoingForward = true;
 
   const transitionKick = () => (reduced ? 0.22 : SCROLL.transitionKick);
   const transitionSpan = () => Math.max(1 - transitionKick(), 0.001);
@@ -285,28 +312,6 @@ export function initStoryScroll({ beats, onBeatChange, onRestart, getAssetSettle
     });
   };
 
-  const restartStory = () => {
-    if (!isStoryComplete()) return;
-
-    transitionTween?.kill();
-    transitionTween = null;
-    wheelAccum = 0;
-    clearAutoTimer();
-    onRestart?.();
-
-    currentBeat = 0;
-    phase = "settled";
-    transitionDirection = 1;
-    timelineTotalMs = computeTimelineTotal();
-    playbackStart = performance.now();
-    dwellStartedAt = performance.now();
-    setProgressFill(0);
-    updatePlaybackUi();
-    scheduleAutoAdvance();
-    tickPlayback();
-    armNextStep(1);
-  };
-
   const returnToStart = ({ force = false } = {}) => {
     if (currentBeat <= 0 && phase === "settled") return false;
 
@@ -320,6 +325,7 @@ export function initStoryScroll({ beats, onBeatChange, onRestart, getAssetSettle
     transitionDirection = -1;
     clearAutoTimer();
     syncTimelineElapsed(0);
+    onReturnToStart?.();
     settleAt(0);
     updatePlaybackUi();
     armNextStep(-1);
@@ -454,13 +460,24 @@ export function initStoryScroll({ beats, onBeatChange, onRestart, getAssetSettle
   window.addEventListener("touchstart", onTouchStart, { passive: true });
   window.addEventListener("touchend", onTouchEnd, { passive: true });
   window.addEventListener("keydown", onKeyDown);
-  restartEl?.addEventListener("click", restartStory);
 
   settleAt(0);
   startPlayback();
 
   return {
     getCurrentBeat: () => currentBeat,
+    jumpToBeat: (index) => {
+      const beat = Math.max(0, Math.min(beatCount - 1, index));
+      if (beat === currentBeat && phase === "settled") return;
+      transitionTween?.kill();
+      transitionTween = null;
+      wheelAccum = 0;
+      transitionDirection = 1;
+      clearAutoTimer();
+      syncTimelineElapsed(timelineMsForBeat(beat));
+      settleAt(beat);
+      armNextStep(1);
+    },
     goToBeat: (index) => {
       if (index === currentBeat) return;
       if (index <= 0) {
@@ -478,7 +495,6 @@ export function initStoryScroll({ beats, onBeatChange, onRestart, getAssetSettle
       window.removeEventListener("touchstart", onTouchStart);
       window.removeEventListener("touchend", onTouchEnd);
       window.removeEventListener("keydown", onKeyDown);
-      restartEl?.removeEventListener("click", restartStory);
     },
   };
 }

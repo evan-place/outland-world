@@ -172,6 +172,8 @@ uniform float u_lensStrength;
 uniform float u_safeInnerY;
 uniform float u_safeOuterY;
 uniform float u_warpBandPower;
+uniform float u_distortRimPower;
+uniform float u_smearRimPower;
 uniform float u_safeInnerX;
 uniform float u_safeOuterX;
 uniform float u_smearLength;
@@ -184,25 +186,27 @@ float lensWarpAmount(vec2 screenUv) {
   float yDist = abs(n.y);
 
   float yWarp = smoothstep(u_safeInnerY, u_safeOuterY, yDist);
+  yWarp = yWarp * yWarp * (3.0 - 2.0 * yWarp);
   yWarp = pow(yWarp, u_warpBandPower);
 
   float xDist = abs(n.x);
   float xWarp = smoothstep(u_safeInnerX, u_safeOuterX, xDist) * yWarp;
 
-  return clamp(max(yWarp, xWarp * 0.72), 0.0, 1.0);
+  return clamp(max(yWarp, xWarp * 0.68), 0.0, 1.0);
 }
 
 vec2 lensDistort(vec2 screenUv) {
   vec2 n = (screenUv - u_lensCenter) / u_lensRadius;
   float warp = lensWarpAmount(screenUv);
-  if (warp <= 0.0001) return screenUv;
+  float rim = pow(warp, u_distortRimPower);
+  if (rim <= 0.0001) return screenUv;
 
-  float k = u_lensStrength * warp;
+  float k = u_lensStrength * rim;
 
   vec2 bulge;
-  bulge.x = n.x * k * (1.1 + abs(n.y) * 0.72);
-  bulge.x *= 1.24;
-  bulge.y = n.y * k * 0.52;
+  bulge.x = n.x * k * (1.02 + abs(n.y) * 0.58);
+  bulge.x *= 1.16;
+  bulge.y = n.y * k * 0.34;
 
   return clamp(screenUv + bulge * u_lensRadius, vec2(0.003), vec2(0.997));
 }
@@ -220,11 +224,11 @@ vec4 sampleMotionSmear(sampler2D tex, vec2 texUv, float amount) {
 
   vec4 acc = vec4(0.0);
   float wsum = 0.0;
-  const int TAPS = 12;
+  const int TAPS = 16;
 
   for (int i = 0; i < TAPS; i++) {
     float fi = float(i) / float(TAPS - 1);
-    float w = exp(-fi * 2.4);
+    float w = exp(-fi * 1.75);
     vec2 suv = vec2(texUv.x, texUv.y - fi * amount * u_smearLength);
     acc += texture2D(tex, clamp(suv, vec2(0.003), vec2(0.997))) * w;
     wsum += w;
@@ -235,15 +239,17 @@ vec4 sampleMotionSmear(sampler2D tex, vec2 texUv, float amount) {
 
 vec4 sampleLayer(sampler2D tex, vec2 screenUv, float travel, float smearAmt) {
   float warp = lensWarpAmount(screenUv);
+  float smearWarp = pow(warp, u_smearRimPower);
   vec2 lensUv = lensDistort(screenUv);
   vec2 texUv = screenToTexture(lensUv, travel);
-  return sampleMotionSmear(tex, texUv, smearAmt * warp);
+  return sampleMotionSmear(tex, texUv, smearAmt * smearWarp);
 }
 
 void main() {
   float t = clamp(u_progress, 0.0, 1.0);
   float warp = lensWarpAmount(v_uv);
-  float smearAmt = u_motionSmear * warp;
+  float smearWarp = pow(warp, u_smearRimPower);
+  float smearAmt = u_motionSmear * smearWarp;
 
   vec4 fromCol = sampleLayer(u_from, v_uv, u_fromTravel, smearAmt);
   vec4 toCol = sampleLayer(u_to, v_uv, u_toTravel, smearAmt);
@@ -273,6 +279,7 @@ export class CRTBlend {
     this.metrics = readTextMetrics(sampleEl);
     this.displayWidth = this.metrics.textWidth;
     this.displayHeight = 0;
+    this.blockHeight = 0;
     this.contentHeight = 0;
     this.stageHeight = 0;
     this.viewHeight = 1;
@@ -304,6 +311,8 @@ export class CRTBlend {
       safeInnerY: gl.getUniformLocation(prog, "u_safeInnerY"),
       safeOuterY: gl.getUniformLocation(prog, "u_safeOuterY"),
       warpBandPower: gl.getUniformLocation(prog, "u_warpBandPower"),
+      distortRimPower: gl.getUniformLocation(prog, "u_distortRimPower"),
+      smearRimPower: gl.getUniformLocation(prog, "u_smearRimPower"),
       safeInnerX: gl.getUniformLocation(prog, "u_safeInnerX"),
       safeOuterX: gl.getUniformLocation(prog, "u_safeOuterX"),
       smearLength: gl.getUniformLocation(prog, "u_smearLength"),
@@ -332,31 +341,36 @@ export class CRTBlend {
       measureBeatBlockH(beat.html, this.sampleEl, beat.style)
     );
     const maxBlockH = Math.max(...blockHeights, 1);
-    this.contentHeight = maxBlockH;
+    const viewportPad = Math.ceil(maxBlockH * Math.max(0, STORY_TRANSITION.viewportPadRatio));
+    let viewportH = maxBlockH + viewportPad * 2;
 
     const margin = STORY_TRANSITION.travelMargin;
     let travelPad = Math.ceil(maxBlockH * STORY_TRANSITION.travelPadRatio);
-    let stageH = maxBlockH + travelPad * 2;
+    // Texture must be at least as tall as the visible viewport so pads aren't empty black.
+    let stageH = Math.max(maxBlockH + travelPad * 2, viewportH);
 
     const minTravelForTraverse = () => {
-      const viewH = maxBlockH / stageH;
+      const viewH = viewportH / stageH;
       const blockNorm = maxBlockH / stageH;
       return viewH * 0.5 + blockNorm * 0.5 + margin;
     };
 
-    let travelDistance = travelPad / stageH;
+    let travelDistance = (stageH - maxBlockH) * 0.5 / stageH;
     let minTravel = minTravelForTraverse();
     let guard = 0;
     while (travelDistance < minTravel && guard < 24) {
       travelPad += Math.ceil(maxBlockH * 0.12);
-      stageH = maxBlockH + travelPad * 2;
-      travelDistance = travelPad / stageH;
+      stageH = Math.max(maxBlockH + travelPad * 2, viewportH);
+      travelDistance = (stageH - maxBlockH) * 0.5 / stageH;
       minTravel = minTravelForTraverse();
       guard += 1;
     }
 
+    this.blockHeight = maxBlockH;
+    this.contentHeight = viewportH;
     this.stageHeight = stageH;
-    this.viewHeight = maxBlockH / stageH;
+    // Map the full taller canvas onto a matching window of the texture (text stays centered).
+    this.viewHeight = viewportH / stageH;
     this.travelDistance = travelDistance;
 
     this.textures = beats.map((beat, index) => {
@@ -447,6 +461,8 @@ export class CRTBlend {
     gl.uniform1f(this.u.safeInnerY, safeInnerY);
     gl.uniform1f(this.u.safeOuterY, safeOuterY);
     gl.uniform1f(this.u.warpBandPower, cfg.warpBandPower);
+    gl.uniform1f(this.u.distortRimPower, cfg.distortRimPower);
+    gl.uniform1f(this.u.smearRimPower, cfg.smearRimPower);
     gl.uniform1f(this.u.safeInnerX, cfg.safeInnerX);
     gl.uniform1f(this.u.safeOuterX, cfg.safeOuterX);
     gl.uniform1f(this.u.smearLength, cfg.smearLength);
@@ -552,8 +568,9 @@ export class CRTBlend {
         fromIdx,
         toIdx,
         progress: motionT,
-        travelProgress: animT,
-        direction: 1,
+        fromTravel: travel.fromTravel,
+        toTravel: travel.toTravel,
+        motionSmear: travel.motionSmear,
       });
       return;
     }

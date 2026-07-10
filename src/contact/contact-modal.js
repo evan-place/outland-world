@@ -190,4 +190,6 @@ export function initContactModal() {
       syncSubmitState();
     }
   });
+
+  return { open, close };
 }
