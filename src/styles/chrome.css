@@ -91,7 +91,10 @@
   .chrome-cta {
     left: var(--rail-width-closed);
     right: 0;
+    width: auto;
+    max-width: none;
     transform: none;
+    justify-content: center;
   }
 }
 
@@ -194,7 +197,11 @@ body.rail-open {
 }
 
 .rail-toggle--cta {
-  display: none;
+  display: flex;
+}
+
+.rail-toggle--cta[hidden] {
+  display: none !important;
 }
 
 .chrome-mobile-rail {
@@ -335,7 +342,6 @@ body.rail-open {
   flex-direction: column;
   gap: 32px;
   width: var(--rail-panel-content-width);
-  text-align: justify;
   color: var(--monorail-white);
 }
 
@@ -345,6 +351,7 @@ body.rail-open {
   font-size: 31px;
   letter-spacing: -0.01em;
   line-height: 1.2;
+  text-align: left;
   mix-blend-mode: exclusion;
 }
 
@@ -358,6 +365,7 @@ body.rail-open {
   font-family: var(--font-sans);
   font-size: 14px;
   line-height: 1.2;
+  text-align: justify;
 }
 
 .rail-team {
@@ -680,7 +688,7 @@ body.rail-open {
     -webkit-overflow-scrolling: touch;
     padding: 16px;
     /* Clear the floating CTA + mute above the bottom rail. */
-    padding-bottom: calc(var(--chrome-cta-height) + 28px);
+    padding-bottom: calc(var(--chrome-cta-height) + 56px);
     box-sizing: border-box;
     scrollbar-width: none;
     -ms-overflow-style: none;
@@ -739,16 +747,20 @@ body.rail-open {
   }
 
   .rail-toggle--cta {
-    display: none;
+    display: none !important;
   }
 
   .chrome-cta {
+    left: 0;
+    right: 0;
     bottom: var(--chrome-cta-bottom);
+    width: auto;
+    max-width: none;
     gap: 10px;
-    max-width: calc(100vw - 40px);
     min-height: var(--chrome-mobile-bar-height);
-    padding: 0;
+    padding: 0 20px;
     box-sizing: border-box;
+    justify-content: center;
     z-index: 14;
   }
 
