@@ -381,7 +381,18 @@ export function initStoryScroll({ beats, onBeatChange, getAssetSettleDelayMs, on
     return true;
   };
 
+  const shouldIgnoreScrollInput = (target) => {
+    if (document.body.classList.contains("contact-modal-open")) return true;
+    if (!(target instanceof Element)) return false;
+    const tag = target.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
+    if (target.isContentEditable) return true;
+    return Boolean(target.closest("input, textarea, select, [contenteditable='true']"));
+  };
+
   const onWheel = (event) => {
+    if (shouldIgnoreScrollInput(event.target)) return;
+
     event.preventDefault();
 
     const now = performance.now();
@@ -445,6 +456,8 @@ export function initStoryScroll({ beats, onBeatChange, getAssetSettleDelayMs, on
   };
 
   const onKeyDown = (event) => {
+    if (shouldIgnoreScrollInput(event.target)) return;
+
     if (event.key === "ArrowDown" || event.key === "PageDown" || event.key === " ") {
       if (!canAcceptStep(1) && phase !== "transitioning") return;
       event.preventDefault();

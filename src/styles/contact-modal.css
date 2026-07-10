@@ -34,11 +34,11 @@ body.contact-modal-open {
   position: relative;
   display: flex;
   flex-direction: column;
-  width: min(520px, 100%);
-  max-height: min(90vh, 760px);
+  width: min(640px, 100%);
+  max-height: min(94vh, 880px);
   overflow: hidden;
   margin: 0;
-  padding: 48px 40px 32px;
+  padding: 52px 48px 36px;
   box-sizing: border-box;
   background: var(--foundation-black);
   border: 1px solid var(--system-grey);
@@ -118,12 +118,20 @@ body.contact-modal-open {
   display: flex;
   flex-direction: column;
   gap: 28px;
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
-  padding-right: 4px;
+  padding-right: 0;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.contact-modal__scroll::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .contact-modal__field {
@@ -139,6 +147,12 @@ body.contact-modal-open {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: rgba(252, 252, 245, 0.55);
+}
+
+.contact-modal__optional {
+  text-transform: none;
+  letter-spacing: 0.01em;
+  opacity: 0.7;
 }
 
 .contact-modal__input,
@@ -160,10 +174,33 @@ body.contact-modal-open {
 }
 
 .contact-modal__textarea {
-  min-height: 96px;
-  max-height: min(28vh, 200px);
-  resize: vertical;
+  min-height: 140px;
+  max-height: 200px;
+  resize: none;
+  overflow-y: auto;
   padding-top: 4px;
+  /* Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: var(--system-grey) transparent;
+}
+
+.contact-modal__textarea::-webkit-scrollbar {
+  width: 6px;
+}
+
+.contact-modal__textarea::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.contact-modal__textarea::-webkit-scrollbar-thumb {
+  background: var(--system-grey);
+  border-radius: 8px;
+}
+
+.contact-modal__textarea::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .contact-modal__input::placeholder,
@@ -262,6 +299,10 @@ body.contact-modal-open {
   .contact-modal__input,
   .contact-modal__textarea {
     font-size: 16px;
+  }
+
+  .contact-modal__textarea {
+    max-height: 180px;
   }
 
   .contact-modal__actions {

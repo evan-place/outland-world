@@ -29,8 +29,8 @@
   pointer-events: auto;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
-  mix-blend-mode: exclusion;
-  color: var(--system-grey);
+  mix-blend-mode: normal;
+  color: var(--monorail-white);
 }
 
 .chrome-audio__svg {
@@ -53,14 +53,6 @@
     stroke-width 0.2s ease;
 }
 
-.chrome-audio[aria-pressed="true"] .chrome-audio__wave {
-  color: var(--system-grey);
-}
-
-.chrome-audio[aria-pressed="false"] .chrome-audio__wave {
-  color: var(--monorail-white);
-}
-
 .chrome-audio:focus-visible {
   outline: 1px solid var(--monorail-white);
   outline-offset: 4px;
@@ -71,22 +63,35 @@
   .chrome-audio:hover .chrome-audio__wave,
   .chrome-audio.chrome-audio--hover .chrome-audio__ring,
   .chrome-audio.chrome-audio--hover .chrome-audio__wave {
-    color: var(--monorail-white);
     stroke-width: 2;
   }
 }
 
 .chrome-audio:focus-visible .chrome-audio__ring,
 .chrome-audio:focus-visible .chrome-audio__wave {
-  color: var(--monorail-white);
   stroke-width: 2;
 }
 
 @media (hover: none) {
   .chrome-audio:active .chrome-audio__ring,
   .chrome-audio:active .chrome-audio__wave {
-    color: var(--monorail-white);
     stroke-width: 2;
+  }
+}
+
+@media (min-width: 769px) {
+  /* Center in the content panel beside the collapsed rail.
+     Opening the rail overlays content — it does not reflow this center.
+     Avoid transform here so mix-blend-mode can sample the scene behind. */
+  .chrome-logo {
+    left: calc((100vw + var(--rail-width-closed)) / 2);
+    transform: translateX(-50%);
+  }
+
+  .chrome-cta {
+    left: var(--rail-width-closed);
+    right: 0;
+    transform: none;
   }
 }
 
@@ -431,14 +436,20 @@ body.rail-open {
 .chrome-cta {
   position: fixed;
   bottom: var(--chrome-cta-bottom);
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
+  right: 0;
   z-index: 10;
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
   justify-content: center;
   gap: 10px;
+  pointer-events: none;
+  /* Blend the whole CTA cluster with the scene (transform would isolate this). */
+  mix-blend-mode: exclusion;
+}
+
+.chrome-cta > * {
   pointer-events: auto;
 }
 
@@ -457,12 +468,11 @@ body.rail-open {
   text-transform: uppercase;
   white-space: nowrap;
   color: var(--monorail-white);
-  background: transparent;
+  background: var(--foundation-black);
   border: 1px solid var(--monorail-white);
   border-radius: 200px;
   padding: 0 16px;
   cursor: pointer;
-  mix-blend-mode: exclusion;
 }
 
 .cta-pill:hover {
