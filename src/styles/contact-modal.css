@@ -54,17 +54,17 @@ body.contact-modal-open {
 
 .contact-modal__close {
   position: absolute;
-  top: 16px;
-  right: 16px;
-  width: 32px;
-  height: 32px;
+  top: 14px;
+  right: 14px;
+  width: 40px;
+  height: 40px;
   padding: 0;
   border: none;
   border-radius: 200px;
   background: transparent;
   color: var(--monorail-white);
   font-family: var(--font-screen);
-  font-size: 22px;
+  font-size: 30px;
   line-height: 1;
   cursor: pointer;
   opacity: 0.72;
@@ -80,7 +80,7 @@ body.contact-modal-open {
 }
 
 .contact-modal__headline {
-  margin: 0 0 20px;
+  margin: 0 0 24px;
   font-family: var(--font-serif);
   font-size: clamp(28px, 4.5vw, 36px);
   font-weight: 400;
@@ -94,14 +94,109 @@ body.contact-modal-open {
   font-style: italic;
 }
 
-.contact-modal__lede {
-  margin: 0 0 32px;
-  font-family: var(--font-screen);
-  font-size: 15px;
-  line-height: 1.5;
-  letter-spacing: 0.01em;
-  color: rgba(252, 252, 245, 0.72);
+.contact-modal__direct {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: rgba(252, 252, 245, 0.42);
   flex-shrink: 0;
+  cursor: pointer;
+  transition: color 0.18s ease;
+}
+
+.contact-modal__direct:hover,
+.contact-modal__direct:focus-visible,
+.contact-modal__direct[data-copied="true"] {
+  color: rgba(252, 252, 245, 0.78);
+}
+
+.contact-modal__direct:focus-visible {
+  outline: 1px solid rgba(252, 252, 245, 0.55);
+  outline-offset: 3px;
+}
+
+.contact-modal__email {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.3;
+  letter-spacing: 0.02em;
+}
+
+.contact-modal__icon {
+  position: relative;
+  display: block;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.contact-modal__copy-icon,
+.contact-modal__check-icon {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 14px;
+  height: 14px;
+  transition:
+    opacity 0.22s ease,
+    transform 0.22s ease;
+}
+
+.contact-modal__copy-icon {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.contact-modal__check-icon {
+  opacity: 0;
+  transform: scale(0.72);
+}
+
+.contact-modal__check-path {
+  stroke-dasharray: 16;
+  stroke-dashoffset: 16;
+}
+
+.contact-modal__direct[data-copied="true"] .contact-modal__copy-icon {
+  opacity: 0;
+  transform: scale(0.72);
+}
+
+.contact-modal__direct[data-copied="true"] .contact-modal__check-icon {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.contact-modal__direct[data-copied="true"] .contact-modal__check-path {
+  animation: contact-check-draw 0.38s cubic-bezier(0.22, 1, 0.36, 1) 0.06s both;
+}
+
+@keyframes contact-check-draw {
+  from {
+    stroke-dashoffset: 16;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .contact-modal__copy-icon,
+  .contact-modal__check-icon {
+    transition: opacity 0.01ms linear;
+  }
+
+  .contact-modal__direct[data-copied="true"] .contact-modal__check-path {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
 }
 
 .contact-modal__form {
@@ -179,6 +274,7 @@ body.contact-modal-open {
   resize: none;
   overflow-y: auto;
   padding-top: 4px;
+  border-bottom: none;
   /* Firefox */
   scrollbar-width: thin;
   scrollbar-color: var(--system-grey) transparent;
@@ -215,6 +311,11 @@ body.contact-modal-open {
 }
 
 .contact-modal__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
   flex-shrink: 0;
   margin-top: 24px;
   padding-top: 20px;
@@ -285,11 +386,6 @@ body.contact-modal-open {
   .contact-modal__headline {
     margin-bottom: 16px;
     font-size: 24px;
-  }
-
-  .contact-modal__lede {
-    margin-bottom: 24px;
-    font-size: 14px;
   }
 
   .contact-modal__scroll {

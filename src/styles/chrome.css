@@ -37,7 +37,7 @@
   display: block;
   width: 43px;
   height: 43px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .chrome-audio__ring,
@@ -48,9 +48,8 @@
   stroke-miterlimit: 10;
   stroke-linecap: round;
   stroke-linejoin: round;
-  transition:
-    stroke 0.2s ease,
-    stroke-width 0.2s ease;
+  opacity: 0.45;
+  transition: opacity 0.2s ease;
 }
 
 .chrome-audio:focus-visible {
@@ -58,25 +57,28 @@
   outline-offset: 4px;
 }
 
+/* Hover: ring stays faded, wave goes solid. */
 @media (hover: hover) and (pointer: fine) {
-  .chrome-audio:hover .chrome-audio__ring,
   .chrome-audio:hover .chrome-audio__wave,
-  .chrome-audio.chrome-audio--hover .chrome-audio__ring,
   .chrome-audio.chrome-audio--hover .chrome-audio__wave {
-    stroke-width: 2;
+    opacity: 1;
   }
 }
 
-.chrome-audio:focus-visible .chrome-audio__ring,
 .chrome-audio:focus-visible .chrome-audio__wave {
-  stroke-width: 2;
+  opacity: 1;
 }
 
 @media (hover: none) {
-  .chrome-audio:active .chrome-audio__ring,
   .chrome-audio:active .chrome-audio__wave {
-    stroke-width: 2;
+    opacity: 1;
   }
+}
+
+/* On: ring and wave both solid (overrides hover ring fade). */
+.chrome-audio.chrome-audio--playing .chrome-audio__ring,
+.chrome-audio.chrome-audio--playing .chrome-audio__wave {
+  opacity: 1;
 }
 
 @media (min-width: 769px) {
@@ -86,15 +88,6 @@
   .chrome-logo {
     left: calc((100vw + var(--rail-width-closed)) / 2);
     transform: translateX(-50%);
-  }
-
-  .chrome-cta {
-    left: var(--rail-width-closed);
-    right: 0;
-    width: auto;
-    max-width: none;
-    transform: none;
-    justify-content: center;
   }
 }
 
@@ -450,6 +443,18 @@ body.rail-open {
   mix-blend-mode: exclusion;
 }
 
+@media (min-width: 769px) {
+  /* Must follow the base .chrome-cta rule so left/right aren't overwritten. */
+  .chrome-cta {
+    left: var(--rail-width-closed);
+    right: 0;
+    width: auto;
+    max-width: none;
+    transform: none;
+    justify-content: center;
+  }
+}
+
 .chrome-cta > * {
   pointer-events: auto;
 }
@@ -554,6 +559,7 @@ body.rail-open {
   background: var(--story-progress-fill);
 }
 
+/* Mobile chrome — viewport width OR tuner phone frame (#app container). */
 @media (max-width: 768px) {
   body.rail-open {
     --rail-width: 100%;

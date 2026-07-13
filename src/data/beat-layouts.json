@@ -229,12 +229,127 @@
           "opacity": 1
         }
       ]
+    },
+    {
+      "id": "field-experiences",
+      "items": [
+        {
+          "assetId": "block-08",
+          "anchor": { "x": 0.91, "y": 0.06 },
+          "rotation": 115,
+          "z": -0.4,
+          "scale": 3.2,
+          "blendMode": "normal",
+          "opacity": 1
+        },
+        {
+          "assetId": "block-03",
+          "anchor": { "x": 0.146, "y": 0.235 },
+          "rotation": -4.34,
+          "z": -0.1,
+          "scale": 4.65,
+          "blendMode": "normal",
+          "opacity": 1
+        },
+        {
+          "assetId": "illo-marks-03",
+          "anchor": { "x": 0.3, "y": 0.12 },
+          "rotation": 0,
+          "z": 0.25,
+          "scale": 3.36,
+          "blendMode": "exclusion",
+          "opacity": 1
+        },
+        {
+          "assetId": "doc-04",
+          "anchor": { "x": 0.15, "y": 0.995 },
+          "rotation": -26.17,
+          "z": 0.5,
+          "scale": 3.84,
+          "blendMode": "normal",
+          "opacity": 1
+        },
+        {
+          "assetId": "doc-03",
+          "anchor": { "x": 0.945, "y": 0.729 },
+          "rotation": -9.5,
+          "z": 0.85,
+          "scale": 3.55,
+          "blendMode": "normal",
+          "opacity": 1
+        },
+        {
+          "assetId": "illo-orbits",
+          "anchor": { "x": 0.805, "y": 0.797 },
+          "rotation": 139.81,
+          "z": 1.2,
+          "scale": 1.41,
+          "blendMode": "normal",
+          "opacity": 1
+        }
+      ],
+      "itemsMobile": [
+        {
+          "assetId": "block-08",
+          "anchor": { "x": 0.925, "y": 0.075 },
+          "rotation": 102,
+          "z": -0.4,
+          "scale": 1.9,
+          "blendMode": "normal",
+          "opacity": 1
+        },
+        {
+          "assetId": "block-03",
+          "anchor": { "x": 0.101, "y": 0.261 },
+          "rotation": -4.34,
+          "z": -0.1,
+          "scale": 2.23,
+          "blendMode": "normal",
+          "opacity": 1
+        },
+        {
+          "assetId": "illo-marks-03",
+          "anchor": { "x": 0.29, "y": 0.194 },
+          "rotation": 0,
+          "z": 0.25,
+          "scale": 2.05,
+          "blendMode": "exclusion",
+          "opacity": 1
+        },
+        {
+          "assetId": "doc-04",
+          "anchor": { "x": 0.117, "y": 0.925 },
+          "rotation": -26.17,
+          "z": 0.5,
+          "scale": 2.02,
+          "blendMode": "normal",
+          "opacity": 1
+        },
+        {
+          "assetId": "doc-03",
+          "anchor": { "x": 0.78, "y": 0.64 },
+          "rotation": -6,
+          "z": 0.85,
+          "scale": 2.41,
+          "blendMode": "normal",
+          "opacity": 1
+        },
+        {
+          "assetId": "illo-orbits",
+          "anchor": { "x": 0.915, "y": 0.73 },
+          "rotation": 139.81,
+          "z": 1.2,
+          "scale": 1.04,
+          "blendMode": "normal",
+          "opacity": 1
+        }
+      ]
     }
   ],
   "assignments": [
     "field-wander",
     "field-imagine",
-    "field-wander",
+    "field-experiences",
     "field-wander",
     "field-imagine",
     "field-wander",

@@ -1,0 +1,324 @@
+/* Dev-only: phone frame when the asset layout tuner forces mobile. */
+
+html.asset-layout-tuner-mobile {
+  /* Figma mobile frame (outland_mobile / 390×844) */
+  --tuner-mobile-width: 390px;
+  --tuner-mobile-height: 844px;
+
+  /* Match mobile tokens while the browser window itself is still wide. */
+  --story-max-width: 274px;
+  --story-font-size: 21.3px;
+  --story-line-height: 1.35;
+  --safe-zone-width: 274px;
+  --chrome-logo-top: 32px;
+  --chrome-logo-height: 31px;
+  --chrome-safe-top: 0px;
+  --chrome-safe-bottom: 0px;
+  --chrome-rail-inset: 20px;
+  --chrome-mobile-rail-closed-height: 64px;
+  --chrome-mobile-bar-height: 44px;
+  --chrome-cta-height: 44px;
+  --chrome-cta-bottom: calc(
+    var(--chrome-mobile-rail-closed-height) + var(--chrome-safe-bottom) + 12px
+  );
+  --chrome-story-zone-bottom: calc(
+    var(--chrome-cta-bottom) + var(--chrome-cta-height) + 28px
+  );
+  --story-progress-width: 158px;
+}
+
+html.asset-layout-tuner-mobile,
+html.asset-layout-tuner-mobile body {
+  background: #0a0a09;
+  /* Allow scrolling if the 390×844 frame is taller than the window. */
+  overflow: auto;
+}
+
+html.asset-layout-tuner-mobile body {
+  min-height: calc(20px + var(--tuner-mobile-height) + 20px);
+}
+
+/*
+ * Lock Figma mobile size (390×844) at 1:1 scale, left-aligned.
+ * translate(0,0) creates a containing block so fixed chrome/webgl
+ * stay inside the phone frame (not the browser viewport).
+ */
+html.asset-layout-tuner-mobile #app {
+  position: absolute;
+  left: 20px;
+  top: 20px;
+  width: var(--tuner-mobile-width);
+  height: var(--tuner-mobile-height);
+  min-height: var(--tuner-mobile-height);
+  max-height: var(--tuner-mobile-height);
+  transform: translate(0, 0);
+  overflow: hidden;
+  border-radius: 18px;
+  background: var(--foundation-black);
+  box-shadow:
+    0 0 0 1px rgba(252, 252, 245, 0.22),
+    0 28px 90px rgba(0, 0, 0, 0.55);
+}
+
+html.asset-layout-tuner-mobile #webgl-root {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-height: 100%;
+}
+
+html.asset-layout-tuner-mobile .asset-layout-tuner-mobile-badge {
+  position: fixed;
+  left: 20px;
+  bottom: 10px;
+  z-index: 10000;
+  transform: none;
+  padding: 4px 10px;
+  border: 1px solid rgba(252, 252, 245, 0.2);
+  border-radius: 999px;
+  background: rgba(29, 28, 26, 0.88);
+  color: rgba(252, 252, 245, 0.72);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+/* Kill desktop-only media rules while the phone frame is active. */
+html.asset-layout-tuner-mobile #story-layer {
+  left: 0;
+  right: 0;
+}
+
+html.asset-layout-tuner-mobile .chrome-logo {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+html.asset-layout-tuner-mobile .chrome-cta {
+  left: 0;
+  right: 0;
+  width: auto;
+  max-width: none;
+  transform: none;
+}
+
+
+/* === mirrored mobile chrome for phone frame === */
+
+  html.asset-layout-tuner-mobile body.rail-open {
+    --rail-width: 100%;
+  }
+
+  html.asset-layout-tuner-mobile .chrome-logo img {
+    width: var(--chrome-logo-height);
+    height: var(--chrome-logo-height);
+  }
+
+  html.asset-layout-tuner-mobile .chrome-mobile-rail {
+    display: none !important;
+  }
+
+  html.asset-layout-tuner-mobile .chrome-rail {
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: calc(var(--chrome-mobile-rail-closed-height) + var(--chrome-safe-bottom));
+    min-height: 0;
+    border: none;
+    background: transparent;
+    overflow: hidden;
+    pointer-events: none;
+    transform: none;
+    transition: none;
+    z-index: 12;
+  }
+
+  /* Open/closing: stretch from top inset down to the persistent bottom rail. */
+  html.asset-layout-tuner-mobile .chrome-rail--open,
+  html.asset-layout-tuner-mobile .chrome-rail--closing {
+    top: calc(80px + var(--chrome-safe-top));
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: auto;
+    border: none;
+    background: transparent;
+  }
+
+  html.asset-layout-tuner-mobile .rail-shell {
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-end;
+    height: 100%;
+    padding: 0;
+    gap: 0;
+    box-sizing: border-box;
+    pointer-events: none;
+  }
+
+  html.asset-layout-tuner-mobile .chrome-rail--open .rail-shell,
+  html.asset-layout-tuner-mobile .chrome-rail--closing .rail-shell {
+    justify-content: flex-start;
+  }
+
+  /* Bottom rail + icon always visible; sits above the sliding panel. */
+  html.asset-layout-tuner-mobile .rail-shell > .rail-toggle {
+    order: 2;
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-self: stretch;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 100%;
+    height: calc(var(--chrome-mobile-rail-closed-height) + var(--chrome-safe-bottom));
+    margin: 0;
+    padding: 0 0 var(--chrome-safe-bottom);
+    box-sizing: border-box;
+    border: none;
+    border-top: 1px solid var(--system-grey);
+    background: var(--foundation-black);
+    pointer-events: auto;
+  }
+
+  html.asset-layout-tuner-mobile .rail-panel {
+    order: 1;
+    position: relative;
+    z-index: 1;
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 0;
+    min-height: 0;
+    height: auto;
+    margin: 0 var(--chrome-rail-inset);
+    border: 1px solid var(--system-grey);
+    border-bottom: none;
+    background: var(--foundation-black);
+    overflow: hidden;
+    pointer-events: none;
+    transform: translateY(100%);
+    transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  html.asset-layout-tuner-mobile .chrome-rail--open .rail-panel {
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+
+  html.asset-layout-tuner-mobile .chrome-rail--closing .rail-panel {
+    transform: translateY(100%);
+    pointer-events: none;
+  }
+
+  html.asset-layout-tuner-mobile .rail-panel__scroll,
+  html.asset-layout-tuner-mobile .rail-panel__body,
+  html.asset-layout-tuner-mobile .rail-story,
+  html.asset-layout-tuner-mobile .rail-story__body,
+  html.asset-layout-tuner-mobile .rail-team,
+  html.asset-layout-tuner-mobile .rail-footer,
+  html.asset-layout-tuner-mobile .rail-clocks {
+    width: 100%;
+  }
+
+  html.asset-layout-tuner-mobile .rail-panel__scroll {
+    height: 100%;
+    align-items: stretch;
+    overflow: hidden;
+    -webkit-overflow-scrolling: touch;
+    padding: 16px;
+    /* Clear the floating CTA + mute above the bottom rail. */
+    padding-bottom: calc(var(--chrome-cta-height) + 56px);
+    box-sizing: border-box;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  html.asset-layout-tuner-mobile .chrome-rail--open .rail-panel__scroll {
+    overflow: auto;
+  }
+
+  html.asset-layout-tuner-mobile .rail-panel__scroll::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+
+  html.asset-layout-tuner-mobile .rail-clocks,
+  html.asset-layout-tuner-mobile .rail-story,
+  html.asset-layout-tuner-mobile .rail-footer,
+  html.asset-layout-tuner-mobile .rail-team__photo {
+    transform: translateY(24px);
+  }
+
+  html.asset-layout-tuner-mobile .chrome-rail--open .rail-clocks,
+  html.asset-layout-tuner-mobile .chrome-rail--open .rail-story,
+  html.asset-layout-tuner-mobile .chrome-rail--open .rail-footer,
+  html.asset-layout-tuner-mobile .chrome-rail--open .rail-team__photo:first-child,
+  html.asset-layout-tuner-mobile .chrome-rail--open .rail-team__photo:last-child {
+    transform: translateY(0);
+  }
+
+  html.asset-layout-tuner-mobile .rail-clocks {
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    font-size: 10px;
+  }
+
+  html.asset-layout-tuner-mobile .rail-story__title {
+    font-size: 31px;
+  }
+
+  html.asset-layout-tuner-mobile .rail-story__body {
+    max-width: none;
+  }
+
+  html.asset-layout-tuner-mobile .rail-team {
+    height: auto;
+    justify-content: stretch;
+  }
+
+  html.asset-layout-tuner-mobile .rail-team__photo {
+    width: calc(50% - 5.5px);
+    flex: 0 0 calc(50% - 5.5px);
+    height: auto;
+    aspect-ratio: 208.5 / 293.42;
+  }
+
+  html.asset-layout-tuner-mobile .chrome-cta {
+    left: 0;
+    right: 0;
+    bottom: var(--chrome-cta-bottom);
+    width: auto;
+    max-width: none;
+    gap: 10px;
+    min-height: var(--chrome-mobile-bar-height);
+    padding: 0 20px;
+    box-sizing: border-box;
+    justify-content: center;
+    z-index: 14;
+  }
+
+  html.asset-layout-tuner-mobile .chrome-audio {
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+  }
+
+  html.asset-layout-tuner-mobile .chrome-audio__svg {
+    width: 43px;
+    height: 43px;
+  }
+
+  html.asset-layout-tuner-mobile .cta-pill {
+    height: 40px;
+    flex-shrink: 0;
+  }
+

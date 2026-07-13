@@ -137,3 +137,10 @@
     width: min(var(--story-max-width), calc(100vw - 32px));
   }
 }
+
+html.asset-layout-tuner-mobile .story-stage,
+html.asset-layout-tuner-mobile .story-text-stack,
+html.asset-layout-tuner-mobile #story-canvas,
+html.asset-layout-tuner-mobile .story-text-measure {
+  width: min(var(--story-max-width), calc(100% - 32px));
+}

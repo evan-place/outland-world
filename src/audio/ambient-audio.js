@@ -38,6 +38,7 @@ export function initAmbientAudio() {
   const applyMutedState = (nextMuted) => {
     muted = nextMuted;
     audio.muted = muted;
+    toggleUi.setPlaying(!muted);
     syncUI();
   };
 

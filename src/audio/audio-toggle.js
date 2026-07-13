@@ -4,10 +4,15 @@ const WAVE_AMP = 7.35;
 const WAVE_X0 = 3;
 const WAVE_X1 = 40;
 const WAVE_STEPS = 128;
-const BASE_FREQ = 1;
-const HOVER_FREQ = 1.48;
-const PHASE_SPEED = 0.045;
 const CLIP_RADIUS = 19.6;
+
+/** Muted / idle wave — lower frequency, slower scroll. */
+const MUTED_FREQ = 1;
+const MUTED_PHASE_SPEED = 0.028;
+
+/** Hover + playing share the same look and motion (faster than muted). */
+const ACTIVE_FREQ = 1.48;
+const ACTIVE_PHASE_SPEED = 0.055;
 
 function buildWavePath(phase, frequency) {
   const span = WAVE_X1 - WAVE_X0;
@@ -22,7 +27,7 @@ function buildWavePath(phase, frequency) {
 }
 
 export function mountAudioToggle(button) {
-  if (!button) return { destroy() {} };
+  if (!button) return { setPlaying() {}, destroy() {} };
 
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const canHover = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
@@ -70,9 +75,19 @@ export function mountAudioToggle(button) {
 
   const wave = svg.querySelector(".chrome-audio__wave");
   let phase = 0;
-  let frequency = BASE_FREQ;
-  let targetFrequency = BASE_FREQ;
+  let frequency = MUTED_FREQ;
+  let targetFrequency = MUTED_FREQ;
+  let phaseSpeed = MUTED_PHASE_SPEED;
+  let targetPhaseSpeed = MUTED_PHASE_SPEED;
+  let hovering = false;
+  let playing = false;
   let raf = null;
+
+  const syncTargets = () => {
+    const active = playing || hovering;
+    targetFrequency = active ? ACTIVE_FREQ : MUTED_FREQ;
+    targetPhaseSpeed = active ? ACTIVE_PHASE_SPEED : MUTED_PHASE_SPEED;
+  };
 
   const paint = () => {
     wave?.setAttribute("d", buildWavePath(phase, frequency));
@@ -81,7 +96,8 @@ export function mountAudioToggle(button) {
   const tick = () => {
     raf = null;
     if (!reducedMotion) {
-      phase = (phase + PHASE_SPEED) % (Math.PI * 2);
+      phaseSpeed += (targetPhaseSpeed - phaseSpeed) * 0.14;
+      phase = (phase + phaseSpeed) % (Math.PI * 2);
       frequency += (targetFrequency - frequency) * 0.14;
       paint();
       raf = requestAnimationFrame(tick);
@@ -89,8 +105,15 @@ export function mountAudioToggle(button) {
   };
 
   const setHover = (active) => {
+    hovering = active;
     button.classList.toggle("chrome-audio--hover", active);
-    targetFrequency = active ? HOVER_FREQ : BASE_FREQ;
+    syncTargets();
+  };
+
+  const setPlaying = (active) => {
+    playing = Boolean(active);
+    button.classList.toggle("chrome-audio--playing", playing);
+    syncTargets();
   };
 
   const onPointerEnter = () => {
@@ -126,9 +149,10 @@ export function mountAudioToggle(button) {
   }
 
   return {
+    setPlaying,
     destroy() {
       if (raf != null) cancelAnimationFrame(raf);
-      button.classList.remove("chrome-audio--hover");
+      button.classList.remove("chrome-audio--hover", "chrome-audio--playing");
       button.removeEventListener("pointerenter", onPointerEnter);
       button.removeEventListener("pointerleave", onPointerLeave);
       button.removeEventListener("focus", onFocus);

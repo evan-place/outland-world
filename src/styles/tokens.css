@@ -36,7 +36,7 @@
 
 @media (max-width: 768px) {
   :root {
-    /* Figma mobile frame (4880:275) */
+    /* Figma mobile frame (4880:275) — 390×844 artboard */
     --story-max-width: 274px;
     --story-font-size: 21.3px;
     --story-line-height: 1.35;
@@ -45,6 +45,36 @@
     --chrome-logo-height: 31px;
     --chrome-safe-top: env(safe-area-inset-top, 0px);
     --chrome-safe-bottom: env(safe-area-inset-bottom, 0px);
+    --chrome-rail-inset: 20px;
+    --chrome-mobile-rail-closed-height: 64px;
+    --chrome-mobile-bar-height: 44px;
+    --chrome-cta-height: 44px;
+    --chrome-cta-bottom: calc(
+      var(--chrome-mobile-rail-closed-height) + var(--chrome-safe-bottom) + 12px
+    );
+    --chrome-story-zone-bottom: calc(
+      var(--chrome-cta-bottom) + var(--chrome-cta-height) + 28px
+    );
+    --story-progress-width: 158px;
+  }
+}
+
+/* Same mobile tokens when the tuner phone frame shrinks #app. */
+@container outland (max-width: 767.98px) {
+  #webgl-root,
+  #story-layer,
+  .chrome-logo,
+  .chrome-rail,
+  .chrome-cta,
+  #contact-modal {
+    --story-max-width: 274px;
+    --story-font-size: 21.3px;
+    --story-line-height: 1.35;
+    --safe-zone-width: 274px;
+    --chrome-logo-top: 32px;
+    --chrome-logo-height: 31px;
+    --chrome-safe-top: 0px;
+    --chrome-safe-bottom: 0px;
     --chrome-rail-inset: 20px;
     --chrome-mobile-rail-closed-height: 64px;
     --chrome-mobile-bar-height: 44px;

@@ -12,7 +12,7 @@ const SLIDERS = [
   { key: "anchorX", label: "Anchor X", min: 0, max: 1, step: 0.005, itemKey: "anchor", axis: "x" },
   { key: "anchorY", label: "Anchor Y", min: 0, max: 1, step: 0.005, itemKey: "anchor", axis: "y" },
   { key: "rotation", label: "Rotation", min: -180, max: 180, step: 0.5 },
-  { key: "scale", label: "Scale", min: 0.2, max: 3, step: 0.01 },
+  { key: "scale", label: "Scale", min: 0.2, max: 6, step: 0.01 },
   { key: "z", label: "Z depth", min: -3, max: 3, step: 0.1 },
   { key: "opacity", label: "Opacity", min: 0, max: 1, step: 0.01 },
 ];
@@ -36,7 +36,7 @@ export function initAssetLayoutTuner({ beatAssets, storyText, storyScroll, beats
 
   let beatIndex = 0;
   for (let i = 0; i < beats.length; i++) {
-    if (beatAssets.getLayoutIdForBeat(i) === "field-imagine") {
+    if (beatAssets.getLayoutIdForBeat(i) === "field-experiences") {
       beatIndex = i;
       break;
     }
@@ -174,6 +174,30 @@ export function initAssetLayoutTuner({ beatAssets, storyText, storyScroll, beats
   safeZoneText.textContent = "Ignore safe-zone nudge";
   safeZoneRow.append(safeZoneCheck, safeZoneText);
 
+  const viewportRow = document.createElement("label");
+  viewportRow.className = "asset-layout-tuner__field";
+  const viewportLabel = document.createElement("span");
+  viewportLabel.className = "asset-layout-tuner__label";
+  viewportLabel.textContent = "Viewport";
+  const viewportSelect = document.createElement("select");
+  viewportSelect.className = "asset-layout-tuner__select";
+  for (const [value, label] of [
+    ["auto", "Auto (window · <768px = mobile)"],
+    ["desktop", "Desktop"],
+    ["mobile", "Mobile · 390×844"],
+  ]) {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = label;
+    viewportSelect.append(option);
+  }
+  viewportSelect.value = "mobile";
+  viewportRow.append(viewportLabel, viewportSelect);
+
+  const viewportHint = document.createElement("p");
+  viewportHint.className = "asset-layout-tuner__meta";
+  viewportHint.textContent = "Mobile preview uses the Figma frame 390×844.";
+
   const dragRow = document.createElement("label");
   dragRow.className = "asset-layout-tuner__row asset-layout-tuner__row--check";
   const dragCheck = document.createElement("input");
@@ -202,6 +226,8 @@ export function initAssetLayoutTuner({ beatAssets, storyText, storyScroll, beats
   setupBody.className = "asset-layout-tuner__setup-body";
   setupBody.append(
     beatRow,
+    viewportRow,
+    viewportHint,
     layoutMeta,
     assetRow,
     swapRow,
@@ -249,7 +275,7 @@ export function initAssetLayoutTuner({ beatAssets, storyText, storyScroll, beats
       bottom: 12px;
       top: auto;
       right: auto;
-      z-index: 100;
+      z-index: 10050;
       width: 320px;
       border: 1px solid rgba(252, 252, 245, 0.18);
       border-radius: 10px;
@@ -543,9 +569,22 @@ export function initAssetLayoutTuner({ beatAssets, storyText, storyScroll, beats
     const layoutId = beatAssets.getLayoutIdForBeat(beatIndex);
     layoutMeta.textContent = beatAssets.isMobile
       ? `Layout: ${layoutId} · mobile`
-      : `Layout: ${layoutId}`;
+      : `Layout: ${layoutId} · desktop`;
     refreshAssetOptions();
     selectAsset(itemIndex);
+  };
+
+  const applyViewportMode = () => {
+    const mode = viewportSelect.value;
+    beatAssets.setLayoutViewportOverride(mode === "auto" ? null : mode);
+    viewportHint.textContent =
+      mode === "mobile"
+        ? "Phone frame at 390×844 (1×), left-aligned with 20px margin."
+        : mode === "desktop"
+          ? "Desktop layout — full window."
+          : "Auto: resize browser below 768px wide for mobile.";
+    storyText?.resize?.();
+    applyBeat();
   };
 
   const applyPatch = (patch) => {
@@ -815,6 +854,10 @@ export function initAssetLayoutTuner({ beatAssets, storyText, storyScroll, beats
     applyBeat();
   });
 
+  viewportSelect.addEventListener("change", () => {
+    applyViewportMode();
+  });
+
   assetSelect.addEventListener("change", () => {
     selectAsset(Number(assetSelect.value));
   });
@@ -970,7 +1013,7 @@ export function initAssetLayoutTuner({ beatAssets, storyText, storyScroll, beats
 
   beatSelect.value = String(beatIndex);
   restorePanelState();
-  window.setTimeout(applyBeat, 600);
+  window.setTimeout(applyViewportMode, 600);
 
   return {
     panel,
@@ -985,6 +1028,10 @@ export function initAssetLayoutTuner({ beatAssets, storyText, storyScroll, beats
       canvas.removeEventListener("pointerup", onPointerUp);
       canvas.removeEventListener("pointercancel", onPointerUp);
       canvas.style.pointerEvents = "";
+      beatAssets.setLayoutViewportOverride(null);
+      beatAssets.clearTuningSelection?.();
+      document.documentElement.classList.remove("asset-layout-tuner-mobile");
+      document.getElementById("asset-layout-tuner-mobile-badge")?.remove();
       canvas.style.cursor = "";
       if (popOutWindow && !popOutWindow.closed) {
         popOutWindow.close();

@@ -282,6 +282,8 @@ export class BeatAssets {
     this.pointerTarget = { x: 0, y: 0 };
     this.pointer = { x: 0, y: 0 };
     this.isMobile = window.innerWidth < 768;
+    /** @type {null | "mobile" | "desktop"} Force layout in the asset tuner. */
+    this.layoutViewportOverride = null;
     this.layoutTuning = false;
     this.layoutTuningLivePreview = false;
     this.tuningPreviewCycleStart = 0;
@@ -598,6 +600,49 @@ export class BeatAssets {
       }
     }
     this.updateAllMeshes();
+  }
+
+  resolveViewportMobile() {
+    if (this.layoutViewportOverride === "mobile") return true;
+    if (this.layoutViewportOverride === "desktop") return false;
+    return (this.container.clientWidth || window.innerWidth) < 768;
+  }
+
+  /**
+   * Force desktop/mobile layouts while the asset tuner is open.
+   * Pass null to follow the real viewport width again.
+   */
+  setLayoutViewportOverride(mode) {
+    const next =
+      mode === "mobile" || mode === "desktop" ? mode : null;
+    if (this.layoutViewportOverride === next) return this.isMobile;
+    this.layoutViewportOverride = next;
+    document.documentElement.classList.toggle(
+      "asset-layout-tuner-mobile",
+      next === "mobile"
+    );
+    document.documentElement.style.removeProperty("--tuner-mobile-scale");
+
+    let badge = document.getElementById("asset-layout-tuner-mobile-badge");
+    if (next === "mobile") {
+      if (!badge) {
+        badge = document.createElement("div");
+        badge.id = "asset-layout-tuner-mobile-badge";
+        badge.className = "asset-layout-tuner-mobile-badge";
+        document.body.appendChild(badge);
+      }
+      badge.textContent = "390 × 844 · 1× Figma mobile";
+    } else {
+      badge?.remove();
+    }
+
+    // Frame size applies on next layout; resize twice so WebGL picks it up.
+    this.resize();
+    requestAnimationFrame(() => {
+      this.resize();
+      if (this.layoutTuning) this.showSettled(this.tuningBeat);
+    });
+    return this.isMobile;
   }
 
   getMeshesForBeat(beatIndex) {
@@ -925,7 +970,7 @@ export class BeatAssets {
 
   async load() {
     const loader = new THREE.TextureLoader();
-    const isMobile = window.innerWidth < 768;
+    const isMobile = this.resolveViewportMobile();
     const usedIds = new Set();
 
     const layouts = this.layoutManifest.layouts || this.layoutManifest.beats || [];
@@ -1305,7 +1350,7 @@ export class BeatAssets {
   resize() {
     const w = this.container.clientWidth || 1;
     const h = this.container.clientHeight || 1;
-    const nextMobile = w < 768;
+    const nextMobile = this.resolveViewportMobile();
     const layoutChanged = nextMobile !== this.isMobile;
     this.isMobile = nextMobile;
 

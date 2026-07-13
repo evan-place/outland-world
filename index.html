@@ -31,6 +31,7 @@
     <link rel="stylesheet" href="/src/styles/main.css" />
     <link rel="stylesheet" href="/src/styles/story-text.css" />
     <link rel="stylesheet" href="/src/styles/contact-modal.css" />
+    <link rel="stylesheet" href="/src/styles/layout-tuner-preview.css" />
   </head>
   <body tabindex="-1">
     <svg class="visually-hidden" aria-hidden="true" focusable="false">
@@ -168,7 +169,7 @@
       </aside>
 
       <footer class="chrome-cta">
-        <button type="button" id="contact-open" class="cta-pill">Let's Build</button>
+        <button type="button" id="contact-open" class="cta-pill">Let's Imagine</button>
         <button
           type="button"
           id="audio-toggle"
@@ -194,7 +195,6 @@
             <h2 id="contact-headline" class="contact-modal__headline">
               Tomorrow starts with <em>imagination</em>.
             </h2>
-            <p class="contact-modal__lede">Tell us about yours.</p>
 
             <form id="contact-form" class="contact-modal__form" novalidate>
               <input type="hidden" name="_subject" value="New inquiry from Outland" />
@@ -227,17 +227,6 @@
                 </div>
 
                 <div class="contact-modal__field">
-                  <label class="contact-modal__label" for="contact-company">Company <span class="contact-modal__optional">(optional)</span></label>
-                  <input
-                    class="contact-modal__input"
-                    type="text"
-                    id="contact-company"
-                    name="company"
-                    autocomplete="organization"
-                  />
-                </div>
-
-                <div class="contact-modal__field">
                   <label class="contact-modal__label" for="contact-message">What are you imagining?</label>
                   <textarea
                     class="contact-modal__textarea"
@@ -253,6 +242,38 @@
 
               <div class="contact-modal__actions">
                 <button type="submit" class="contact-modal__submit" disabled>Send</button>
+                <button
+                  type="button"
+                  class="contact-modal__direct"
+                  data-contact-copy
+                  aria-label="Copy email address"
+                >
+                  <span class="contact-modal__email" data-contact-email>team@enteroutland.com</span>
+                  <span class="contact-modal__icon" aria-hidden="true">
+                    <svg class="contact-modal__copy-icon" viewBox="0 0 16 16" focusable="false">
+                      <rect x="5.5" y="5.5" width="8" height="8" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.25" />
+                      <path
+                        d="M10.5 5.5V4.2A1.2 1.2 0 0 0 9.3 3H4.2A1.2 1.2 0 0 0 3 4.2v5.1A1.2 1.2 0 0 0 4.2 10.5H5.5"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.25"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                    <svg class="contact-modal__check-icon" viewBox="0 0 16 16" focusable="false">
+                      <path
+                        class="contact-modal__check-path"
+                        d="M3.5 8.2 6.6 11.3 12.5 4.7"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.4"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </span>
+                </button>
               </div>
             </form>
 

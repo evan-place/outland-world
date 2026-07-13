@@ -21,14 +21,40 @@ export function initContactModal() {
   const nameInput = form.querySelector("#contact-name");
   const emailInput = form.querySelector("#contact-email");
   const messageInput = form.querySelector("#contact-message");
+  const emailLabel = modal.querySelector("[data-contact-email]");
+  const copyBtn = modal.querySelector("[data-contact-copy]");
 
   let lastFocused = null;
+  let copyResetTimer = null;
+
+  if (emailLabel) {
+    emailLabel.textContent = CONTACT.toEmail;
+  }
 
   const fieldValues = () => ({
     name: nameInput?.value.trim() ?? "",
     email: emailInput?.value.trim() ?? "",
-    company: form.querySelector("#contact-company")?.value.trim() ?? "",
     message: messageInput?.value.trim() ?? "",
+  });
+
+  const copyEmail = async () => {
+    if (!copyBtn) return;
+    try {
+      await navigator.clipboard.writeText(CONTACT.toEmail);
+      copyBtn.dataset.copied = "true";
+      copyBtn.setAttribute("aria-label", "Email copied");
+      window.clearTimeout(copyResetTimer);
+      copyResetTimer = window.setTimeout(() => {
+        copyBtn.dataset.copied = "false";
+        copyBtn.setAttribute("aria-label", "Copy email address");
+      }, 1800);
+    } catch {
+      window.prompt("Copy email address:", CONTACT.toEmail);
+    }
+  };
+
+  copyBtn?.addEventListener("click", () => {
+    void copyEmail();
   });
 
   const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -160,11 +186,10 @@ export function initContactModal() {
 
     submitBtn?.setAttribute("disabled", "true");
 
-    const { name, email, company, message } = fieldValues();
+    const { name, email, message } = fieldValues();
     const data = new FormData();
     data.append("name", name);
     data.append("email", email);
-    if (company) data.append("company", company);
     data.append("message", message);
     data.append("_subject", CONTACT.subject);
     data.append("_template", "table");
