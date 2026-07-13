@@ -49,6 +49,9 @@
   color: var(--monorail-white);
   font-family: var(--font-serif);
   font-size: var(--story-font-size);
+  font-weight: 400;
+  font-style: normal;
+  font-synthesis: none;
   line-height: var(--story-line-height);
   letter-spacing: var(--story-letter-spacing);
   text-align: center;
@@ -64,8 +67,13 @@
   width: min(var(--story-max-width), calc(100vw - 80px));
 }
 
-.story-text em {
+/* Figma: Ivory LL Italic for emphasized words (true italic cut, not oblique). */
+.story-text em,
+.story-text-measure em {
+  font-family: "Ivory LL", Georgia, serif;
   font-style: italic;
+  font-weight: 400;
+  font-synthesis: none;
 }
 
 .story-text--intro-enter {

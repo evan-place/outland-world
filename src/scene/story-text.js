@@ -1,4 +1,5 @@
-import { SCROLL, STORY_TRANSITION, storyTextClassName } from "../config.js";
+import { SCROLL, STORY_TRANSITION, STYLE_PRESETS, storyTextClassName } from "../config.js";
+import { ensureStoryFonts } from "../fonts/story-fonts.js";
 import { CRTBlend } from "./crt-blend.js";
 
 export class StoryText {
@@ -25,19 +26,33 @@ export class StoryText {
     this.crt = this.useWarp ? new CRTBlend(canvasEl, elA) : null;
     this._blendState = null;
     this._lensPreviewActive = false;
+    this._fontsReady = null;
 
     if (this.crt) {
-      requestAnimationFrame(() => {
-        try {
-          this.crt.buildTextures(beats);
-          this.installFixedStage();
-          this.showSettled(0);
-        } catch (err) {
-          console.error(err);
-          this.showSettled(0);
-        }
-      });
+      void this.initCrt(beats);
     } else {
+      this.showSettled(0);
+    }
+  }
+
+  async ensureFonts() {
+    if (!this._fontsReady) {
+      const size =
+        parseFloat(getComputedStyle(this.outEl).fontSize) ||
+        STYLE_PRESETS["serif-lg"].fontSize;
+      this._fontsReady = ensureStoryFonts(size);
+    }
+    await this._fontsReady;
+  }
+
+  async initCrt(beats) {
+    try {
+      await this.ensureFonts();
+      this.crt.buildTextures(beats);
+      this.installFixedStage();
+      this.showSettled(0);
+    } catch (err) {
+      console.error(err);
       this.showSettled(0);
     }
   }
@@ -365,8 +380,10 @@ export class StoryText {
     this.crt.blend(0, 1, t, 1);
   }
 
-  resize() {
+  async resize() {
     if (!this.crt) return;
+    this._fontsReady = null;
+    await this.ensureFonts();
     this.crt.resize();
     try {
       this.crt.buildTextures(this.beats);

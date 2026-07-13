@@ -196,13 +196,6 @@ body.rail-open {
   outline-offset: 4px;
 }
 
-.rail-toggle--cta {
-  display: flex;
-}
-
-.rail-toggle--cta[hidden] {
-  display: none !important;
-}
 
 .chrome-mobile-rail {
   display: none;
@@ -744,10 +737,6 @@ body.rail-open {
     flex: 0 0 calc(50% - 5.5px);
     height: auto;
     aspect-ratio: 208.5 / 293.42;
-  }
-
-  .rail-toggle--cta {
-    display: none !important;
   }
 
   .chrome-cta {

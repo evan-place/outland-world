@@ -32,13 +32,6 @@ export function initRail() {
   let clockTimer = null;
   let closeTimer = null;
 
-  const syncCtaToggle = (open) => {
-    const ctaToggle = document.querySelector(".rail-toggle--cta");
-    if (!ctaToggle) return;
-    // Desktop: book appears in CTA while open. Mobile: book lives in the bottom rail.
-    ctaToggle.hidden = mqMobile.matches ? true : !open;
-  };
-
   const finishClose = () => {
     rail.classList.remove("chrome-rail--closing");
     if (!rail.classList.contains("chrome-rail--open")) {
@@ -58,7 +51,6 @@ export function initRail() {
       rail.setAttribute("aria-expanded", "true");
       toggles.forEach((btn) => btn.setAttribute("aria-expanded", "true"));
       document.body.classList.add("rail-open");
-      syncCtaToggle(true);
       updateClocks(usClock, walesClock);
       if (clockTimer == null) {
         clockTimer = window.setInterval(() => updateClocks(usClock, walesClock), 1000);
@@ -88,7 +80,6 @@ export function initRail() {
     rail.setAttribute("aria-expanded", "false");
     toggles.forEach((btn) => btn.setAttribute("aria-expanded", "false"));
     document.body.classList.remove("rail-open");
-    syncCtaToggle(false);
 
     if (clockTimer != null) {
       window.clearInterval(clockTimer);
@@ -120,8 +111,4 @@ export function initRail() {
   });
 
   updateClocks(usClock, walesClock);
-  syncCtaToggle(false);
-  mqMobile.addEventListener("change", () => {
-    syncCtaToggle(rail.classList.contains("chrome-rail--open"));
-  });
 }

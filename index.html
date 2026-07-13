@@ -11,6 +11,20 @@
     <meta property="og:type" content="website" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <title>Outland</title>
+    <link
+      rel="preload"
+      href="/fonts/IvoryLLWeb-Regular.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/fonts/IvoryLLWeb-Italic.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
     <link rel="stylesheet" href="/src/styles/tokens.css" />
     <link rel="stylesheet" href="/src/styles/fonts.css" />
     <link rel="stylesheet" href="/src/styles/chrome.css" />
@@ -162,18 +176,6 @@
           aria-pressed="true"
           aria-label="Unmute audio"
         ></button>
-        <button
-          type="button"
-          class="rail-toggle rail-toggle--cta"
-          data-rail-toggle
-          aria-expanded="false"
-          aria-controls="rail-panel"
-          aria-label="About Outland"
-        >
-          <svg class="rail-toggle__icon" aria-hidden="true" focusable="false">
-            <use href="#icon-about" />
-          </svg>
-        </button>
       </footer>
 
       <div id="contact-modal" class="contact-modal" hidden aria-hidden="true">

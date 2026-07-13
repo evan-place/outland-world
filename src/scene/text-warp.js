@@ -2,6 +2,7 @@ import * as THREE from "three";
 import vert from "../shaders/text-warp.vert?raw";
 import frag from "../shaders/text-warp.frag?raw";
 import { STYLE_PRESETS, STORY_TRANSITION } from "../config.js";
+import { storyCanvasFont } from "../fonts/story-fonts.js";
 
 function parseHtmlToLines(html, maxWidth, ctx, style) {
   const temp = document.createElement("div");
@@ -24,9 +25,8 @@ function parseHtmlToLines(html, maxWidth, ctx, style) {
   const preset = STYLE_PRESETS[style] || STYLE_PRESETS["serif-lg"];
   const fontSize = preset.fontSize;
   const lineHeight = fontSize * preset.lineHeight;
-  const fontFamily = '"Ivory LL", Georgia, serif';
-  const fontNormal = `${fontSize}px ${fontFamily}`;
-  const fontItalic = `italic ${fontSize}px ${fontFamily}`;
+  const fontNormal = storyCanvasFont(fontSize, false);
+  const fontItalic = storyCanvasFont(fontSize, true);
 
   const lines = [];
   let current = [];
@@ -81,22 +81,17 @@ export function renderBeatToCanvas(canvas, html, style, dpr = 2) {
   ctx.textBaseline = "top";
   ctx.textAlign = "left";
 
-  const fontFamily = '"Ivory LL", Georgia, serif';
   const cx = canvasW / 2;
 
   lines.forEach((line, li) => {
     const y = pad + li * lineHeight;
     const lineWidth = line.reduce((sum, seg) => {
-      ctx.font = seg.italic
-        ? `italic ${fontSize}px ${fontFamily}`
-        : `${fontSize}px ${fontFamily}`;
+      ctx.font = storyCanvasFont(fontSize, seg.italic);
       return sum + ctx.measureText(seg.text).width;
     }, 0);
     let x = cx - lineWidth / 2;
     for (const seg of line) {
-      ctx.font = seg.italic
-        ? `italic ${fontSize}px ${fontFamily}`
-        : `${fontSize}px ${fontFamily}`;
+      ctx.font = storyCanvasFont(fontSize, seg.italic);
       ctx.fillText(seg.text, x, y);
       x += ctx.measureText(seg.text).width;
     }

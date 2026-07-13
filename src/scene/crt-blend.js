@@ -1,4 +1,5 @@
 import { STYLE_PRESETS, STORY_TRANSITION, storyTextClassName } from "../config.js";
+import { STORY_SERIF_FAMILY, storyCanvasFont } from "../fonts/story-fonts.js";
 
 const DEFAULT_TEXT_WIDTH = 600;
 const DPR = Math.min(window.devicePixelRatio || 1, 2);
@@ -80,7 +81,7 @@ export function readTextMetrics(sampleEl, textWidth = DEFAULT_TEXT_WIDTH) {
     return {
       fontSize: UNIFIED_STYLE.fontSize,
       lineHeight: UNIFIED_STYLE.lineHeight,
-      fontFamily: '"Ivory LL", Georgia, serif',
+      fontFamily: STORY_SERIF_FAMILY,
       textWidth,
     };
   }
@@ -95,7 +96,8 @@ export function readTextMetrics(sampleEl, textWidth = DEFAULT_TEXT_WIDTH) {
   return {
     fontSize,
     lineHeight,
-    fontFamily: computed.fontFamily || '"Ivory LL", Georgia, serif',
+    // Pin to Ivory LL so canvas never falls back to Georgia's italic cut.
+    fontFamily: STORY_SERIF_FAMILY,
     textWidth:
       sampleEl?.closest(".story-stage")?.clientWidth ||
       sampleEl?.closest(".story-text-stack")?.clientWidth ||
@@ -130,8 +132,7 @@ export function renderBeatToStageCanvas(canvas, html, sampleEl, metrics, stageH,
   ctx.textBaseline = "top";
 
   const computed = getComputedStyle(measureEl);
-  const fontSize = parseFloat(computed.fontSize);
-  const fontFamily = computed.fontFamily;
+  const fontSize = parseFloat(computed.fontSize) || UNIFIED_STYLE.fontSize;
   const letterSpacing = computed.letterSpacing;
 
   if (letterSpacing && letterSpacing !== "normal") {
@@ -139,9 +140,7 @@ export function renderBeatToStageCanvas(canvas, html, sampleEl, metrics, stageH,
   }
 
   for (const run of getDomWordRuns(measureEl)) {
-    ctx.font = run.italic
-      ? `italic ${fontSize}px ${fontFamily}`
-      : `${fontSize}px ${fontFamily}`;
+    ctx.font = storyCanvasFont(fontSize, run.italic);
     ctx.fillText(run.text, run.x, run.y + top);
   }
 
