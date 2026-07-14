@@ -56,6 +56,7 @@
   letter-spacing: var(--story-letter-spacing);
   text-align: center;
   text-wrap: wrap;
+  text-rendering: geometricPrecision;
   will-change: opacity;
   backface-visibility: hidden;
 }

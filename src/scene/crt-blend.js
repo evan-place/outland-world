@@ -128,8 +128,9 @@ export function renderBeatToStageCanvas(canvas, html, sampleEl, metrics, stageH,
   const ctx = canvas.getContext("2d");
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   ctx.clearRect(0, 0, textWidth, stageH);
-  ctx.fillStyle = "#fcfcf5";
+  ctx.fillStyle = "rgba(252, 252, 245, 0.92)";
   ctx.textBaseline = "top";
+  ctx.textRendering = "geometricPrecision";
 
   const computed = getComputedStyle(measureEl);
   const fontSize = parseFloat(computed.fontSize) || UNIFIED_STYLE.fontSize;

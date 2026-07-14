@@ -1,12 +1,21 @@
 const BLEND_MODES = [
   "normal",
+  "multiply",
+  "plus-lighter",
+];
+
+const ADDITIVE_BLEND_MODES = new Set([
   "screen",
   "lighten",
   "color-dodge",
   "plus-lighter",
-  "exclusion",
-  "multiply",
-];
+]);
+
+function normalizeBlendMode(mode) {
+  if (mode === "multiply") return "multiply";
+  if (ADDITIVE_BLEND_MODES.has(mode)) return "plus-lighter";
+  return "normal";
+}
 
 const SLIDERS = [
   { key: "anchorX", label: "Anchor X", min: 0, max: 1, step: 0.005, itemKey: "anchor", axis: "x" },
@@ -546,7 +555,7 @@ export function initAssetLayoutTuner({ beatAssets, storyText, storyScroll, beats
       value.textContent = formatValue(current);
     }
 
-    blendSelect.value = item.blendMode ?? "normal";
+    blendSelect.value = normalizeBlendMode(item.blendMode ?? "normal");
     swapSelect.value = item.assetId;
     const assetDefault = getMeshes()[itemIndex]?.userData.layout.entry;
     const inheritedBlend = assetDefault?.blendMode;
