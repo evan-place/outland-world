@@ -1,99 +1,52 @@
-# Deployment & custom domain
+# Deployment
 
-## Current public URL
+## Hosting
 
-**https://evan-place.github.io/outland-world/**
+Deployed on **Vercel** with automatic deploys on push to `main`.
 
-Pushes to `main` auto-deploy via GitHub Actions. Builds use `/outland-world/` asset paths so fonts, images, audio, and WebGL all resolve correctly on that URL.
+- **URL**: https://enteroutland.com
+- **Framework**: Vite (auto-detected)
+- **Serverless functions**: `api/` directory (Node.js)
 
-## How it works
+## Environment variables (Vercel dashboard)
 
-| Mode | When | Asset base | CNAME in deploy |
-|------|------|------------|-----------------|
-| **GitHub Pages** (default) | Now | `/outland-world/` | No |
-| **Custom domain** | After cutover | `/` | `enteroutland.com` |
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `RESEND_API_KEY` | Yes | Resend API key for the contact form |
+| `RESEND_FROM` | No | Sender address, e.g. `Outland <hello@enteroutland.com>`. Defaults to `Outland <onboarding@resend.dev>` |
 
-All asset URLs go through `assetUrl()` and Vite `import.meta.env.BASE_URL` — nothing is hardcoded to a host. The contact form (FormSubmit) works from either URL.
+## Contact form
 
-## Test a production build locally
+The contact form submits to `/api/contact`, a Vercel serverless function that calls the Resend API. Emails are delivered to `team@enteroutland.com`.
 
-Match the live GitHub Pages URL:
+To send from a custom address (instead of `onboarding@resend.dev`), verify `enteroutland.com` in your Resend dashboard and set the `RESEND_FROM` environment variable.
 
-```bash
-npm run build:pages
-npm run preview
-```
-
-Or in one step:
+## Local development
 
 ```bash
-npm run preview:pages
+npm run dev
 ```
 
-Test custom-domain paths locally:
+The contact form won't send emails locally (no `RESEND_API_KEY`), but the UI and validation will work. To test the full flow locally, install the Vercel CLI:
+
+```bash
+npx vercel dev
+```
+
+This runs the serverless functions alongside Vite. Set `RESEND_API_KEY` in a `.env` file (already in `.gitignore`).
+
+## Production build
 
 ```bash
 npm run build
 npm run preview
 ```
 
-## Cutover to enteroutland.com
-
-Do these in order when DNS and domain are ready.
-
-### 1. GitHub repository variable
-
-1. Open **Settings → Secrets and variables → Actions → Variables**
-2. Add variable: `CUSTOM_DOMAIN` = `true`
-
-The next deploy will build with root paths (`/`) and include `enteroutland.com` in the Pages artifact.
-
-### 2. GitHub Pages custom domain
-
-1. **Settings → Pages → Custom domain** → enter `enteroutland.com`
-2. Wait for DNS check, then enable **Enforce HTTPS**
-
-### 3. DNS (at your registrar)
-
-**Apex** `enteroutland.com`:
-
-| Type | Name | Value |
-|------|------|-------|
-| A | `@` | `185.199.108.153` |
-| A | `@` | `185.199.109.153` |
-| A | `@` | `185.199.110.153` |
-| A | `@` | `185.199.111.153` |
-
-**www** (optional):
-
-| Type | Name | Value |
-|------|------|-------|
-| CNAME | `www` | `evan-place.github.io` |
-
-### 4. Update HTML meta (optional, SEO)
-
-In `index.html`, set canonical and `og:url` to `https://enteroutland.com/` if not already.
-
-### 5. Verify
-
-- [ ] https://enteroutland.com — assets, scroll, audio, contact form
-- [ ] HTTPS, no mixed content
-- [ ] Mobile layout
-
-### Rollback
-
-Set `CUSTOM_DOMAIN` to `false` (or delete the variable) and push — deploys return to the `github.io/outland-world/` build.
-
 ## Files reference
 
 | File | Purpose |
 |------|---------|
-| `vite.config.js` | Reads `SITE_SUBPATH` for asset base |
-| `.github/workflows/deploy.yml` | Switches build mode from `CUSTOM_DOMAIN` |
-| `docs/enteroutland.com.CNAME` | Copied into `dist/` only on domain cutover |
-| `src/config.js` → `SITE.url` | Reflects build base at compile time |
-| `src/utils/asset-url.js` | Resolves `/assets/...` for any base |
-
-## Contact form
-
-FormSubmit → `team@enteroutland.com`. First submission after go-live may require a one-time inbox activation email.
+| `vercel.json` | Vercel framework and build config |
+| `api/contact.js` | Serverless function — validates input, calls Resend |
+| `src/config.js` → `CONTACT` | Client-side form config (submit URL) |
+| `src/contact/contact-modal.js` | Contact form UI and submission logic |

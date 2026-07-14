@@ -212,19 +212,12 @@ export const STORY_INTRO = {
   scaleFrom: 0.968,
 };
 
-/** Contact modal — FormSubmit delivers to inbox (confirm address on first submission). */
 export const CONTACT = {
   toEmail: "team@enteroutland.com",
-  submitUrl: "https://formsubmit.co/ajax/team@enteroutland.com",
-  subject: "New inquiry from Outland",
+  submitUrl: "/api/contact",
 };
 
-/** Production site — URL follows build base path (see docs/DEPLOY.md). */
-const pagesBase = import.meta.env.BASE_URL;
 export const SITE = {
-  url:
-    pagesBase === "/"
-      ? "https://enteroutland.com"
-      : `https://evan-place.github.io${pagesBase.replace(/\/$/, "")}`,
+  url: "https://enteroutland.com",
   domain: "enteroutland.com",
 };

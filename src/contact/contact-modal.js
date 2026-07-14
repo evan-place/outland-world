@@ -15,9 +15,6 @@ export function initContactModal() {
 
   if (!modal || !dialog || !openBtn || !form || !panel || !success) return;
 
-  const subjectInput = form.querySelector('input[name="_subject"]');
-  if (subjectInput) subjectInput.value = CONTACT.subject;
-
   const nameInput = form.querySelector("#contact-name");
   const emailInput = form.querySelector("#contact-email");
   const messageInput = form.querySelector("#contact-message");
@@ -172,6 +169,9 @@ export function initContactModal() {
   form.addEventListener("change", syncSubmitState);
   syncSubmitState();
 
+  const SUBMIT_LABEL = "Send";
+  const SUBMIT_SENDING = "Sending\u2026";
+
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     setError("");
@@ -184,34 +184,44 @@ export function initContactModal() {
       return;
     }
 
-    submitBtn?.setAttribute("disabled", "true");
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = SUBMIT_SENDING;
+    }
 
     const { name, email, message } = fieldValues();
-    const data = new FormData();
-    data.append("name", name);
-    data.append("email", email);
-    data.append("message", message);
-    data.append("_subject", CONTACT.subject);
-    data.append("_template", "table");
 
     try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+
       const response = await fetch(CONTACT.submitUrl, {
         method: "POST",
-        headers: { Accept: "application/json" },
-        body: data,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, message }),
+        signal: controller.signal,
       });
 
+      clearTimeout(timeout);
       const payload = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(payload.message || "Something went wrong. Please try again.");
+        throw new Error(payload.error || "Something went wrong. Please try again.");
       }
 
+      await new Promise((r) => setTimeout(r, 400));
       form.hidden = true;
       success.hidden = false;
       success.focus();
     } catch (err) {
-      setError(err.message || "Something went wrong. Please try again.");
+      const msg =
+        err.name === "AbortError"
+          ? "Request timed out. Please try again."
+          : err.message || "Something went wrong. Please try again.";
+      setError(msg);
+      if (submitBtn) {
+        submitBtn.textContent = SUBMIT_LABEL;
+      }
       syncSubmitState();
     }
   });
