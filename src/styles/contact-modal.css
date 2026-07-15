@@ -5,6 +5,7 @@ body.contact-modal-open {
 .contact-modal {
   position: fixed;
   inset: 0;
+  left: var(--rail-width-closed, 0);
   z-index: 30;
   display: grid;
   place-items: center;
@@ -376,6 +377,10 @@ body.contact-modal-open {
 }
 
 @media (max-width: 768px) {
+  .contact-modal {
+    left: 0;
+  }
+
   .contact-modal__dialog {
     padding: 40px 24px 24px;
   }

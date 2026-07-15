@@ -126,6 +126,7 @@ export function initContactModal() {
   };
 
   const close = () => {
+    playBeep(CTA_BEEP_RATE);
     modal.classList.remove("contact-modal--visible");
     modal.setAttribute("aria-hidden", "true");
     document.body.classList.remove("contact-modal-open");
