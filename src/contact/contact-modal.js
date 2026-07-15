@@ -9,17 +9,22 @@ export function initContactModal() {
   const openBtn = document.getElementById("contact-open");
   const form = document.getElementById("contact-form");
   const panel = modal?.querySelector(".contact-modal__panel");
-  const success = modal?.querySelector(".contact-modal__success");
+  const headline = modal?.querySelector(".contact-modal__headline");
   const errorEl = modal?.querySelector(".contact-modal__error");
   const submitBtn = form?.querySelector('[type="submit"]');
 
-  if (!modal || !dialog || !openBtn || !form || !panel || !success) return;
+  if (!modal || !dialog || !openBtn || !form || !panel || !headline) return;
 
   const nameInput = form.querySelector("#contact-name");
   const emailInput = form.querySelector("#contact-email");
   const messageInput = form.querySelector("#contact-message");
   const emailLabel = modal.querySelector("[data-contact-email]");
   const copyBtn = modal.querySelector("[data-contact-copy]");
+
+  const HEADLINE_DEFAULT = headline.innerHTML;
+  const SUBMIT_LABEL = "Send";
+  const SUBMIT_SENDING = "Sending\u2026";
+  const SUBMIT_DONE = "Done";
 
   let lastFocused = null;
   let copyResetTimer = null;
@@ -95,9 +100,13 @@ export function initContactModal() {
 
   const resetForm = () => {
     form.reset();
-    form.hidden = false;
-    success.hidden = true;
+    form.removeAttribute("data-success");
+    headline.innerHTML = HEADLINE_DEFAULT;
     setError("");
+    if (submitBtn) {
+      submitBtn.textContent = SUBMIT_LABEL;
+      submitBtn.type = "submit";
+    }
     syncSubmitState();
   };
 
@@ -169,8 +178,11 @@ export function initContactModal() {
   form.addEventListener("change", syncSubmitState);
   syncSubmitState();
 
-  const SUBMIT_LABEL = "Send";
-  const SUBMIT_SENDING = "Sending\u2026";
+  submitBtn?.addEventListener("click", () => {
+    if (form.dataset.success === "true") {
+      resetForm();
+    }
+  });
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -210,9 +222,13 @@ export function initContactModal() {
       }
 
       await new Promise((r) => setTimeout(r, 400));
-      form.hidden = true;
-      success.hidden = false;
-      success.focus();
+      headline.textContent = "Thank you. We\u2019ll be in touch.";
+      form.dataset.success = "true";
+      if (submitBtn) {
+        submitBtn.textContent = SUBMIT_DONE;
+        submitBtn.type = "button";
+        submitBtn.disabled = false;
+      }
     } catch (err) {
       const msg =
         err.name === "AbortError"
