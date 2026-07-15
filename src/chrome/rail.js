@@ -1,3 +1,5 @@
+import { playBeep } from "../audio/ui-beep.js";
+
 const US_TZ = "America/New_York";
 const WALES_TZ = "Europe/London";
 const MOBILE_RAIL_MS = 450;
@@ -97,6 +99,7 @@ export function initRail() {
   };
 
   const toggle = () => {
+    playBeep();
     setOpen(!rail.classList.contains("chrome-rail--open"));
   };
 

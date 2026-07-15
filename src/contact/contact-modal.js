@@ -1,4 +1,7 @@
 import { CONTACT } from "../config.js";
+import { playBeep } from "../audio/ui-beep.js";
+
+const CTA_BEEP_RATE = 0.7;
 
 const FOCUSABLE =
   'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
@@ -144,7 +147,10 @@ export function initContactModal() {
     }, 320);
   };
 
-  openBtn.addEventListener("click", open);
+  openBtn.addEventListener("click", () => {
+    playBeep(CTA_BEEP_RATE);
+    open();
+  });
 
   modal.querySelectorAll("[data-contact-close]").forEach((el) => {
     el.addEventListener("click", close);

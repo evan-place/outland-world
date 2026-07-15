@@ -1,7 +1,7 @@
 import { assetUrl } from "../utils/asset-url.js";
 import { mountAudioToggle } from "./audio-toggle.js";
 
-const TRACK_SRC = "/assets/test-backtrack.m4a";
+const TRACK_SRC = "/assets/Portals_of_Endless_Possibility_2026-07-14T115019.mp3";
 const DEFAULT_VOLUME = 0.7;
 
 export function initAmbientAudio() {

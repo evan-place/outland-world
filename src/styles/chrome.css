@@ -176,12 +176,47 @@ body.rail-open {
   -webkit-tap-highlight-color: transparent;
 }
 
+.rail-toggle__icons {
+  position: relative;
+  display: block;
+  width: 40px;
+  height: 40px;
+  pointer-events: none;
+}
+
 .rail-toggle img,
 .rail-toggle__icon {
   display: block;
   width: 40px;
   height: 40px;
   pointer-events: none;
+}
+
+.rail-toggle__icon--closed,
+.rail-toggle__icon--open {
+  position: absolute;
+  inset: 0;
+  transition: opacity 0.28s ease, transform 0.28s ease;
+}
+
+.rail-toggle__icon--closed {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.rail-toggle__icon--open {
+  opacity: 0;
+  transform: scale(0.82);
+}
+
+.chrome-rail--open .rail-toggle__icon--closed {
+  opacity: 0;
+  transform: scale(0.82);
+}
+
+.chrome-rail--open .rail-toggle__icon--open {
+  opacity: 1;
+  transform: scale(1);
 }
 
 .rail-toggle:focus-visible {
