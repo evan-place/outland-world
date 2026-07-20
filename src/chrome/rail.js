@@ -1,4 +1,4 @@
-import { playBeep } from "../audio/ui-beep.js";
+import { playUiClick } from "../audio/ui-beep.js";
 
 const US_TZ = "America/New_York";
 const WALES_TZ = "Europe/London";
@@ -99,7 +99,7 @@ export function initRail() {
   };
 
   const toggle = () => {
-    playBeep();
+    playUiClick();
     setOpen(!rail.classList.contains("chrome-rail--open"));
   };
 

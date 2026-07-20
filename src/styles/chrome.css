@@ -370,7 +370,7 @@ body.rail-open {
   margin: 0;
   font-family: var(--font-serif);
   font-size: 31px;
-  letter-spacing: -0.01em;
+  letter-spacing: var(--story-letter-spacing);
   line-height: 1.2;
   text-align: left;
   mix-blend-mode: exclusion;
@@ -582,7 +582,6 @@ body.rail-open {
   height: var(--story-progress-height);
   border-radius: 8px;
   background: var(--story-progress-track);
-  overflow: hidden;
 }
 
 .story-progress__fill {
@@ -592,6 +591,17 @@ body.rail-open {
   height: 100%;
   border-radius: 8px;
   background: var(--story-progress-fill);
+}
+
+.story-progress__dot {
+  position: absolute;
+  top: 0;
+  width: var(--story-progress-height);
+  height: var(--story-progress-height);
+  margin-left: calc(var(--story-progress-height) / -2);
+  border-radius: 50%;
+  background: var(--story-progress-fill);
+  pointer-events: none;
 }
 
 /* Mobile chrome — viewport width OR tuner phone frame (#app container). */

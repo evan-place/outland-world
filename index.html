@@ -65,6 +65,7 @@
     <link rel="stylesheet" href="/src/styles/main.css" />
     <link rel="stylesheet" href="/src/styles/story-text.css" />
     <link rel="stylesheet" href="/src/styles/contact-modal.css" />
+    <link rel="stylesheet" href="/src/styles/selection-fx.css" />
     <link rel="stylesheet" href="/src/styles/layout-tuner-preview.css" />
   </head>
   <body tabindex="-1">
@@ -206,16 +207,9 @@
 
               <div class="rail-panel__body">
                 <div class="rail-story">
-                  <p class="rail-story__title">
-                    Creators of <em>tomorrow</em>
-                  </p>
-                  <p class="rail-story__body">
-                    Outland is a future-focused experimental creative company operating at the
-                    intersection of imagination, design and emerging technology. We collaborate with
-                    visionary founders and ambitious teams to build narrative-driven brand worlds
-                    through identity systems, digital experiences and storytelling. Using exploratory
-                    design, emerging technologies and AI, we expand ideas into immersive brand worlds
-                    grounded in strategy and narrative.
+                  <p class="rail-story__title" data-select-fx>Creators of <em>tomorrow</em></p>
+                  <p class="rail-story__body" data-select-fx>
+                    Outland is a future-focused experimental creative company operating at the intersection of imagination, design and emerging technology. We collaborate with visionary founders and ambitious teams to build narrative-driven brand worlds through identity systems, digital experiences and storytelling. Using exploratory design, emerging technologies and AI, we expand ideas into immersive brand worlds grounded in strategy and narrative.
                   </p>
                 </div>
 
@@ -290,8 +284,8 @@
           </button>
 
           <div class="contact-modal__panel">
-            <h2 id="contact-headline" class="contact-modal__headline">
-              Tomorrow starts with <em>imagination</em>.
+            <h2 id="contact-headline" class="contact-modal__headline" data-select-fx>
+              Tomorrow starts with<br /><em>imagination</em>.
             </h2>
 
             <form id="contact-form" class="contact-modal__form" novalidate>

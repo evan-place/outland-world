@@ -1,7 +1,8 @@
 import { CONTACT } from "../config.js";
-import { playBeep } from "../audio/ui-beep.js";
+import { refreshSelectionFx } from "../chrome/selection-fx.js";
+import { playUiClick, playSuccessClick } from "../audio/ui-beep.js";
 
-const CTA_BEEP_RATE = 0.7;
+const CTA_CLICK_RATE = 0.7;
 
 const FOCUSABLE =
   'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
@@ -24,10 +25,14 @@ export function initContactModal() {
   const emailLabel = modal.querySelector("[data-contact-email]");
   const copyBtn = modal.querySelector("[data-contact-copy]");
 
-  const HEADLINE_DEFAULT = headline.innerHTML;
+  const HEADLINE_DEFAULT = "Tomorrow starts with<br /><em>imagination</em>.";
   const SUBMIT_LABEL = "Send";
   const SUBMIT_SENDING = "Sending\u2026";
   const SUBMIT_DONE = "Done";
+
+  // Restore clean markup in case selection-fx already wrapped this node.
+  headline.innerHTML = HEADLINE_DEFAULT;
+  refreshSelectionFx(headline);
 
   let lastFocused = null;
   let copyResetTimer = null;
@@ -105,6 +110,7 @@ export function initContactModal() {
     form.reset();
     form.removeAttribute("data-success");
     headline.innerHTML = HEADLINE_DEFAULT;
+    refreshSelectionFx(headline);
     setError("");
     if (submitBtn) {
       submitBtn.textContent = SUBMIT_LABEL;
@@ -126,7 +132,7 @@ export function initContactModal() {
   };
 
   const close = () => {
-    playBeep(CTA_BEEP_RATE);
+    playUiClick(CTA_CLICK_RATE);
     modal.classList.remove("contact-modal--visible");
     modal.setAttribute("aria-hidden", "true");
     document.body.classList.remove("contact-modal-open");
@@ -149,7 +155,7 @@ export function initContactModal() {
   };
 
   openBtn.addEventListener("click", () => {
-    playBeep(CTA_BEEP_RATE);
+    playUiClick(CTA_CLICK_RATE);
     open();
   });
 
@@ -229,7 +235,9 @@ export function initContactModal() {
       }
 
       await new Promise((r) => setTimeout(r, 400));
+      playSuccessClick();
       headline.textContent = "Thank you. We\u2019ll be in touch.";
+      refreshSelectionFx(headline);
       form.dataset.success = "true";
       if (submitBtn) {
         submitBtn.textContent = SUBMIT_DONE;

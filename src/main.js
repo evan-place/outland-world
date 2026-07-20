@@ -3,6 +3,7 @@ import beatLayouts from "./data/beat-layouts.json";
 import storyData from "./data/story.json";
 import { initAmbientAudio } from "./audio/ambient-audio.js";
 import { initRail } from "./chrome/rail.js";
+import { initSelectionFx } from "./chrome/selection-fx.js";
 import { BeatAssets } from "./scene/beat-assets.js";
 import { StoryText } from "./scene/story-text.js";
 import { initStoryScroll } from "./scroll/story-scroll.js";
@@ -19,6 +20,7 @@ function main() {
 
   initAmbientAudio();
   initRail();
+  initSelectionFx();
 
   const contactOpen = document.getElementById("contact-open");
   let contactModal = null;

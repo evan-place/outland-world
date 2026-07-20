@@ -5,6 +5,7 @@ export function initStoryScroll({ beats, onBeatChange, getAssetSettleDelayMs, on
   const a11y = document.getElementById("story-a11y");
   const progressEl = document.getElementById("story-progress");
   const progressFill = progressEl?.querySelector(".story-progress__fill");
+  const progressTrack = progressEl?.querySelector(".story-progress__track");
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const beatCount = beats.length;
 
@@ -57,6 +58,19 @@ export function initStoryScroll({ beats, onBeatChange, getAssetSettleDelayMs, on
     return timelineMsForBeat(fromBeat) + timing.beatDwell;
   };
 
+  const progressDots = [];
+  if (progressTrack && beatCount > 1) {
+    const total = computeTimelineTotal();
+    for (let i = 1; i < beatCount; i++) {
+      const pct = (timelineMsForBeat(i) / total) * 100;
+      const dot = document.createElement("span");
+      dot.className = "story-progress__dot";
+      dot.style.left = `${pct}%`;
+      progressTrack.appendChild(dot);
+      progressDots.push(pct);
+    }
+  }
+
   const syncTimelineElapsed = (ms) => {
     playbackStart = performance.now() - Math.max(0, Math.min(timelineTotalMs, ms));
   };
@@ -64,7 +78,14 @@ export function initStoryScroll({ beats, onBeatChange, getAssetSettleDelayMs, on
   const setProgressFill = (ratio) => {
     if (!progressFill) return;
     const value = Math.max(0, Math.min(1, ratio));
-    progressFill.style.width = `${value * 100}%`;
+    const pct = value * 100;
+    progressFill.style.width = `${pct}%`;
+    const dots = progressTrack?.children;
+    if (dots) {
+      for (let i = 0; i < progressDots.length; i++) {
+        dots[i + 1].style.opacity = pct >= progressDots[i] ? "0" : "";
+      }
+    }
   };
 
   let progressIntroPlayed = false;

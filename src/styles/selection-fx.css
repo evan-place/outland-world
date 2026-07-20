@@ -1,0 +1,29 @@
+::selection {
+  background: var(--monorail-white);
+  color: var(--foundation-black);
+}
+
+::-moz-selection {
+  background: var(--monorail-white);
+  color: var(--foundation-black);
+}
+
+[data-select-fx] {
+  color: var(--monorail-white);
+  transition: color 220ms ease;
+}
+
+/* Fade unselected copy via color alpha — no per-glyph DOM needed. */
+[data-select-fx].select-fx--has-selection {
+  color: rgba(252, 252, 245, 0.38);
+}
+
+[data-select-fx].select-fx--has-selection em {
+  color: inherit;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-select-fx] {
+    transition: none;
+  }
+}
