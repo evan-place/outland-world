@@ -3,16 +3,20 @@ const WAVE_CY = 21.5;
 const WAVE_AMP = 7.35;
 const WAVE_X0 = 3;
 const WAVE_X1 = 40;
-const WAVE_STEPS = 128;
+const WAVE_STEPS = 96;
 const CLIP_RADIUS = 19.6;
 
 /** Muted / idle wave — lower frequency, slower scroll. */
 const MUTED_FREQ = 1;
 const MUTED_PHASE_SPEED = 0.028;
 
-/** Hover + playing share the same look and motion (faster than muted). */
-const ACTIVE_FREQ = 1.48;
-const ACTIVE_PHASE_SPEED = 0.055;
+/** Playing — clearer, quicker pulse. */
+const PLAYING_FREQ = 1.42;
+const PLAYING_PHASE_SPEED = 0.052;
+
+/** Hover — slightly lighter / airier motion (audio does the pitch lift). */
+const HOVER_FREQ = 1.18;
+const HOVER_PHASE_SPEED = 0.036;
 
 function buildWavePath(phase, frequency) {
   const span = WAVE_X1 - WAVE_X0;
@@ -73,6 +77,9 @@ export function mountAudioToggle(button) {
     button.replaceChildren(svg);
   }
 
+  // Drop legacy echo path if HMR left one behind.
+  svg.querySelector(".chrome-audio__wave-echo")?.remove();
+
   const wave = svg.querySelector(".chrome-audio__wave");
   let phase = 0;
   let frequency = MUTED_FREQ;
@@ -84,9 +91,16 @@ export function mountAudioToggle(button) {
   let raf = null;
 
   const syncTargets = () => {
-    const active = playing || hovering;
-    targetFrequency = active ? ACTIVE_FREQ : MUTED_FREQ;
-    targetPhaseSpeed = active ? ACTIVE_PHASE_SPEED : MUTED_PHASE_SPEED;
+    if (playing) {
+      targetFrequency = PLAYING_FREQ;
+      targetPhaseSpeed = PLAYING_PHASE_SPEED;
+    } else if (hovering) {
+      targetFrequency = HOVER_FREQ;
+      targetPhaseSpeed = HOVER_PHASE_SPEED;
+    } else {
+      targetFrequency = MUTED_FREQ;
+      targetPhaseSpeed = MUTED_PHASE_SPEED;
+    }
   };
 
   const paint = () => {
@@ -96,9 +110,9 @@ export function mountAudioToggle(button) {
   const tick = () => {
     raf = null;
     if (!reducedMotion) {
-      phaseSpeed += (targetPhaseSpeed - phaseSpeed) * 0.14;
+      phaseSpeed += (targetPhaseSpeed - phaseSpeed) * 0.12;
       phase = (phase + phaseSpeed) % (Math.PI * 2);
-      frequency += (targetFrequency - frequency) * 0.14;
+      frequency += (targetFrequency - frequency) * 0.12;
       paint();
       raf = requestAnimationFrame(tick);
     }

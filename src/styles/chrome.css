@@ -7,6 +7,25 @@
   transform: translateX(-50%);
 }
 
+.chrome-logo__link {
+  display: block;
+  pointer-events: auto;
+  line-height: 0;
+  color: inherit;
+  text-decoration: none;
+  border-radius: 50%;
+  transition: opacity 0.22s ease;
+}
+
+.chrome-logo__link:hover {
+  opacity: 0.72;
+}
+
+.chrome-logo__link:focus-visible {
+  outline: 1px solid var(--monorail-white);
+  outline-offset: 4px;
+}
+
 .chrome-logo img {
   display: block;
   width: var(--chrome-logo-height);
@@ -49,7 +68,7 @@
   stroke-linecap: round;
   stroke-linejoin: round;
   opacity: 0.45;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.35s ease;
 }
 
 .chrome-audio:focus-visible {
@@ -57,25 +76,25 @@
   outline-offset: 4px;
 }
 
-/* Hover: ring stays faded, wave goes solid. */
+/* Soft hover cue — audio pitch does the dream work. */
 @media (hover: hover) and (pointer: fine) {
   .chrome-audio:hover .chrome-audio__wave,
   .chrome-audio.chrome-audio--hover .chrome-audio__wave {
-    opacity: 1;
+    opacity: 0.82;
   }
 }
 
 .chrome-audio:focus-visible .chrome-audio__wave {
-  opacity: 1;
+  opacity: 0.82;
 }
 
 @media (hover: none) {
   .chrome-audio:active .chrome-audio__wave {
-    opacity: 1;
+    opacity: 0.82;
   }
 }
 
-/* On: ring and wave both solid (overrides hover ring fade). */
+/* On: ring and wave both solid. */
 .chrome-audio.chrome-audio--playing .chrome-audio__ring,
 .chrome-audio.chrome-audio--playing .chrome-audio__wave {
   opacity: 1;

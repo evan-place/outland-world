@@ -10,17 +10,32 @@ const IDLE = {
   filterQ: 0.7,
   mix: 0,
   rate: 1,
+  master: DEFAULT_VOLUME,
+  shelfGain: 0,
 };
 
 /** CTA hover — grit/warble without a level jump. */
-const HOVER = {
+const CTA_HOVER = {
   filterHz: 2600,
   filterQ: 1.8,
   mix: 0.32,
   rate: 0.965,
+  master: DEFAULT_VOLUME,
+  shelfGain: 0,
 };
 
-const RAMP_S = 0.18;
+/** Audio-toggle hover — brighter pitch, softer level. */
+const AUDIO_HOVER = {
+  filterHz: 15000,
+  filterQ: 0.7,
+  mix: 0,
+  rate: 1.05,
+  master: DEFAULT_VOLUME * 0.78,
+  shelfGain: 3.5,
+};
+
+const RAMP_S = 0.28;
+const AUDIO_HOVER_RAMP_S = 0.75;
 /** Waveshaper adds harmonics/peaks — pad wet so it matches dry loudness. */
 const WET_PAD = 0.42;
 
@@ -57,10 +72,52 @@ export function initAmbientAudio() {
 
   let muted = true;
   let ctaHovering = false;
+  let audioHovering = false;
   let graph = null;
+  let rateTarget = IDLE.rate;
+  let rateRaf = null;
 
   const canHover = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  const tickPlaybackRate = () => {
+    rateRaf = null;
+    const current = audio.playbackRate || 1;
+    const delta = rateTarget - current;
+    if (Math.abs(delta) < 0.0008) {
+      try {
+        audio.playbackRate = rateTarget;
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
+    // Ease toward target — slower = softer pitch glide (~0.8–1s).
+    const next = current + delta * 0.055;
+    try {
+      audio.playbackRate = next;
+    } catch {
+      return;
+    }
+    rateRaf = requestAnimationFrame(tickPlaybackRate);
+  };
+
+  const setPlaybackRate = (rate, instant = false) => {
+    rateTarget = rate;
+    if (instant || reduceMotion) {
+      if (rateRaf != null) {
+        cancelAnimationFrame(rateRaf);
+        rateRaf = null;
+      }
+      try {
+        audio.playbackRate = rate;
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
+    if (rateRaf == null) rateRaf = requestAnimationFrame(tickPlaybackRate);
+  };
 
   const ensureGraph = () => {
     if (graph) return graph;
@@ -79,6 +136,11 @@ export function initAmbientAudio() {
     filter.frequency.value = IDLE.filterHz;
     filter.Q.value = IDLE.filterQ;
 
+    const shelf = ctx.createBiquadFilter();
+    shelf.type = "highshelf";
+    shelf.frequency.value = 3200;
+    shelf.gain.value = IDLE.shelfGain;
+
     const shaper = ctx.createWaveShaper();
     shaper.curve = makeDistortionCurve(48);
     shaper.oversample = "2x";
@@ -90,38 +152,51 @@ export function initAmbientAudio() {
     master.gain.value = DEFAULT_VOLUME;
 
     source.connect(dryGain);
+    dryGain.connect(shelf);
+    shelf.connect(master);
+
     source.connect(filter);
     filter.connect(shaper);
     shaper.connect(wetPad);
     wetPad.connect(wetGain);
-    dryGain.connect(master);
     wetGain.connect(master);
     master.connect(ctx.destination);
 
-    graph = { ctx, dryGain, wetGain, filter, master };
+    graph = { ctx, dryGain, wetGain, filter, shelf, master };
     return graph;
   };
 
-  const applyDistort = (active) => {
+  const currentTarget = () => {
+    if (muted) return IDLE;
+    if (ctaHovering && !reduceMotion) return CTA_HOVER;
+    if (audioHovering && !reduceMotion) return AUDIO_HOVER;
+    return IDLE;
+  };
+
+  const applyTone = () => {
     const g = graph;
     if (!g) return;
 
-    const engaged = !muted && active && !reduceMotion;
-    const target = engaged ? HOVER : IDLE;
+    const target = currentTarget();
     const { dry, wet } = dryWetGains(target.mix);
     const now = g.ctx.currentTime;
-    const seconds = reduceMotion ? 0.04 : RAMP_S;
+    const settlingPitch = Math.abs((audio.playbackRate || 1) - IDLE.rate) > 0.002;
+    const seconds = reduceMotion
+      ? 0.05
+      : target === CTA_HOVER
+        ? RAMP_S
+        : target === AUDIO_HOVER || audioHovering || settlingPitch
+          ? AUDIO_HOVER_RAMP_S
+          : RAMP_S;
 
     rampParam(g.filter.frequency, target.filterHz, now, seconds);
     rampParam(g.filter.Q, target.filterQ, now, seconds);
     rampParam(g.wetGain.gain, wet, now, seconds);
     rampParam(g.dryGain.gain, dry, now, seconds);
+    rampParam(g.shelf.gain, target.shelfGain, now, seconds);
+    rampParam(g.master.gain, target.master, now, seconds);
 
-    try {
-      audio.playbackRate = target.rate;
-    } catch {
-      /* ignore */
-    }
+    setPlaybackRate(target.rate);
   };
 
   const syncUI = () => {
@@ -140,7 +215,7 @@ export function initAmbientAudio() {
       }
       audio.muted = false;
       await audio.play();
-      applyDistort(ctaHovering);
+      applyTone();
       return true;
     } catch {
       return false;
@@ -152,7 +227,7 @@ export function initAmbientAudio() {
     audio.muted = muted;
     toggleUi.setPlaying(!muted);
     syncUI();
-    applyDistort(ctaHovering);
+    applyTone();
   };
 
   button?.addEventListener("click", async () => {
@@ -170,7 +245,12 @@ export function initAmbientAudio() {
 
   const setCtaHover = (active) => {
     ctaHovering = active;
-    applyDistort(active);
+    applyTone();
+  };
+
+  const setAudioHover = (active) => {
+    audioHovering = active;
+    applyTone();
   };
 
   if (cta && canHover) {
@@ -183,6 +263,19 @@ export function initAmbientAudio() {
     });
     cta.addEventListener("blur", () => {
       if (!cta.matches(":hover")) setCtaHover(false);
+    });
+  }
+
+  if (button && canHover) {
+    button.addEventListener("pointerenter", () => setAudioHover(true));
+    button.addEventListener("pointerleave", () => setAudioHover(false));
+    button.addEventListener("focus", () => {
+      requestAnimationFrame(() => {
+        if (button.matches(":focus-visible")) setAudioHover(true);
+      });
+    });
+    button.addEventListener("blur", () => {
+      if (!button.matches(":hover")) setAudioHover(false);
     });
   }
 
