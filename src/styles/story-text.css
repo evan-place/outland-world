@@ -46,7 +46,7 @@
   width: 100%;
   margin: 0;
   padding: 0;
-  color: var(--monorail-white);
+  color: var(--color-fg);
   font-family: var(--font-serif);
   font-size: var(--story-font-size);
   font-weight: 400;

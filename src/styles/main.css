@@ -8,9 +8,12 @@ html,
 body {
   margin: 0;
   padding: 0;
-  background: var(--foundation-black);
-  color: var(--monorail-white);
+  background: var(--color-bg);
+  color: var(--color-fg);
   overflow: hidden;
+  transition:
+    background-color 0.35s ease,
+    color 0.35s ease;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

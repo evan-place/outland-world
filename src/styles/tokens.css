@@ -2,6 +2,23 @@
   --foundation-black: #1d1c1a;
   --monorail-white: #fcfcf5;
   --system-grey: #444241;
+  color-scheme: light;
+
+  /* Light is the default; physical brand colors above remain stable. */
+  --color-bg: var(--monorail-white);
+  --color-fg: var(--foundation-black);
+  --color-border: rgba(29, 28, 26, 0.34);
+  --color-overlay: rgba(29, 28, 26, 0.28);
+  --color-muted-1: rgba(29, 28, 26, 0.78);
+  --color-muted-2: rgba(29, 28, 26, 0.55);
+  --color-muted-3: rgba(29, 28, 26, 0.42);
+  --color-muted-4: rgba(29, 28, 26, 0.28);
+  --story-progress-track: rgba(29, 28, 26, 0.1);
+  --story-progress-fill: rgba(29, 28, 26, 0.28);
+  /* Shared chrome line weight — buttons, icons, focus rings. */
+  --ui-stroke: 1px;
+  --icon-stroke: 1px;
+  --focus-ring-offset: 4px;
 
   --font-sans: "Px Grotesk", system-ui, sans-serif;
   --font-mono: "Px Grotesk Mono", ui-monospace, monospace;
@@ -26,12 +43,24 @@
   --chrome-cta-height: 40px;
   --story-progress-offset: 14px;
   --story-progress-height: 3px;
-  --story-progress-track: rgba(252, 252, 245, 0.1);
-  --story-progress-fill: rgba(252, 252, 245, 0.28);
   --chrome-story-zone-top: calc(var(--chrome-logo-top) + var(--chrome-logo-height));
   --chrome-story-zone-bottom: calc(var(--chrome-cta-bottom) + var(--chrome-cta-height) + 24px);
   --story-stage-gap: 32px;
   --story-progress-width: 157px;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-bg: var(--foundation-black);
+  --color-fg: var(--monorail-white);
+  --color-border: var(--system-grey);
+  --color-overlay: rgba(29, 28, 26, 0.72);
+  --color-muted-1: rgba(252, 252, 245, 0.78);
+  --color-muted-2: rgba(252, 252, 245, 0.55);
+  --color-muted-3: rgba(252, 252, 245, 0.42);
+  --color-muted-4: rgba(252, 252, 245, 0.28);
+  --story-progress-track: rgba(252, 252, 245, 0.1);
+  --story-progress-fill: rgba(252, 252, 245, 0.28);
 }
 
 @media (max-width: 768px) {

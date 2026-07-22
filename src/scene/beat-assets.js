@@ -13,9 +13,23 @@ const BLEND_MAP = {
   multiply: () => ({ blending: THREE.MultiplyBlending, transparent: true }),
 };
 
+/** Canonical modes the tuner exposes — aliases collapse to these. */
+function canonicalizeBlendMode(mode) {
+  if (mode === "multiply") return "multiply";
+  if (
+    mode === "plus-lighter" ||
+    mode === "screen" ||
+    mode === "lighten" ||
+    mode === "color-dodge"
+  ) {
+    return "plus-lighter";
+  }
+  return "normal";
+}
+
 function resolveItemVisual(item) {
   return {
-    blendMode: item.blendMode ?? "normal",
+    blendMode: canonicalizeBlendMode(item.blendMode ?? "normal"),
     opacity: item.opacity ?? 1,
   };
 }
@@ -293,6 +307,9 @@ export class BeatAssets {
     this._layoutSnapshots = new Map();
     this._raycaster = new THREE.Raycaster();
     this._pickNdc = new THREE.Vector2();
+    this._dragHit = new THREE.Vector3();
+    this._dragPlane = new THREE.Plane();
+    this._dragPlaneNormal = new THREE.Vector3(0, 0, 1);
     this.tuningSelection = null;
     this.selectionOutline = null;
 
@@ -309,14 +326,16 @@ export class BeatAssets {
       alpha: true,
       powerPreference: "high-performance",
     });
+    const initialBackground =
+      document.documentElement.dataset.theme === "dark" ? 0x1d1c1a : 0xfcfcf5;
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.setClearColor(0x1d1c1a, 1);
+    this.renderer.setClearColor(initialBackground, 1);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.sortObjects = true;
     container.appendChild(this.renderer.domElement);
     this.fx = new AssetFx(this.renderer, this.scene, this.camera, {
       reducedMotion: this.reducedMotion,
-      backgroundColor: 0x1d1c1a,
+      backgroundColor: initialBackground,
     });
 
     this._onResize = () => this.resize();
@@ -325,9 +344,16 @@ export class BeatAssets {
       this.pointerTarget.x = 0;
       this.pointerTarget.y = 0;
     };
+    this._onThemeChange = (event) => {
+      const color = event.detail?.theme === "dark" ? 0x1d1c1a : 0xfcfcf5;
+      this.renderer.setClearColor(color, 1);
+      this.fx.setBackgroundColor(color);
+      this.syncSelectionOutlineColor();
+    };
     window.addEventListener("resize", this._onResize);
     window.addEventListener("pointermove", this._onPointerMove, { passive: true });
     window.addEventListener("pointerleave", this._onPointerLeave);
+    window.addEventListener("outland:themechange", this._onThemeChange);
     this.resize();
 
     this.loadPromise = this.load();
@@ -448,10 +474,11 @@ export class BeatAssets {
   }
 
   worldToAnchor(x, y) {
+    // Inverse of anchorToWorld: world ∈ [-span, span] ↔ anchor ∈ [0, 1]
     const { xSpan, ySpan } = getAnchorSpans(this.camera.aspect);
     return {
-      x: clamp01(x / xSpan + 0.5),
-      y: clamp01(-y / ySpan + 0.5),
+      x: clamp01(x / (2 * xSpan) + 0.5),
+      y: clamp01(-y / (2 * ySpan) + 0.5),
     };
   }
 
@@ -551,6 +578,15 @@ export class BeatAssets {
     this.selectionOutline.visible = false;
   }
 
+  selectionOutlineColor() {
+    return document.documentElement.dataset.theme === "dark" ? 0xfcfcf5 : 0x1d1c1a;
+  }
+
+  syncSelectionOutlineColor() {
+    if (!this.selectionOutline?.material?.color) return;
+    this.selectionOutline.material.color.setHex(this.selectionOutlineColor());
+  }
+
   syncSelectionOutline() {
     const selection = this.tuningSelection;
     if (!this.layoutTuning || this.layoutTuningLivePreview) {
@@ -573,7 +609,7 @@ export class BeatAssets {
     if (!this.selectionOutline) {
       const outlineGeo = new THREE.EdgesGeometry(new THREE.PlaneGeometry(1, 1));
       const outlineMat = new THREE.LineBasicMaterial({
-        color: 0xfcfcf5,
+        color: this.selectionOutlineColor(),
         transparent: true,
         opacity: 0.9,
         depthTest: false,
@@ -583,6 +619,8 @@ export class BeatAssets {
       this.selectionOutline.frustumCulled = false;
       this.selectionOutline.renderOrder = 2000;
       this.scene.add(this.selectionOutline);
+    } else {
+      this.syncSelectionOutlineColor();
     }
 
     this.selectionOutline.position.copy(mesh.position);
@@ -669,6 +707,20 @@ export class BeatAssets {
     return hits[0]?.object ?? null;
   }
 
+  /** Screen point → world XY on a plane at z (facing the camera). */
+  clientToWorldXY(clientX, clientY, z = 0) {
+    const el = this.renderer.domElement;
+    const rect = el.getBoundingClientRect();
+    if (!rect.width || !rect.height) return null;
+
+    this._pickNdc.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+    this._pickNdc.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+    this._raycaster.setFromCamera(this._pickNdc, this.camera);
+    this._dragPlane.set(this._dragPlaneNormal, -z);
+    if (!this._raycaster.ray.intersectPlane(this._dragPlane, this._dragHit)) return null;
+    return { x: this._dragHit.x, y: this._dragHit.y, z };
+  }
+
   applyItemPatch(beatIndex, itemIndex, patch) {
     const meshes = this.getMeshesForBeat(beatIndex);
     const mesh = meshes[itemIndex];
@@ -682,6 +734,10 @@ export class BeatAssets {
     }
     for (const [key, value] of Object.entries(patch)) {
       if (key === "anchor") continue;
+      if (key === "blendMode") {
+        item.blendMode = canonicalizeBlendMode(value);
+        continue;
+      }
       item[key] = value;
     }
 
@@ -715,6 +771,45 @@ export class BeatAssets {
     this.applyItemPatch(beatIndex, itemIndex, { anchor: next });
   }
 
+  /** Lightweight drag update — keeps the mesh under the cursor without geometry rebuilds. */
+  dragItemToWorld(beatIndex, itemIndex, x, y) {
+    const mesh = this.getMeshesForBeat(beatIndex)[itemIndex];
+    if (!mesh) return;
+
+    const item = mesh.userData.layout.item;
+    const home = mesh.userData.layout.home;
+    const anchor = this.worldToAnchor(x, y);
+    item.anchor = { x: anchor.x, y: anchor.y };
+    home.x = x;
+    home.y = y;
+    mesh.position.x = x;
+    mesh.position.y = y;
+    this.storeBasePosition(mesh);
+
+    const layoutId = this.getLayoutIdForBeat(beatIndex);
+    for (let beat = 0; beat < this.beatCount; beat++) {
+      if (beat === beatIndex) continue;
+      if (this.getLayoutIdForBeat(beat) !== layoutId) continue;
+      const other = this.getMeshesForBeat(beat)[itemIndex];
+      if (!other) continue;
+      other.userData.layout.item = item;
+      other.userData.layout.home.x = x;
+      other.userData.layout.home.y = y;
+    }
+
+    this.syncSelectionOutline();
+  }
+
+  /** Finalize a drag so shared layout meshes fully rebuild from the new anchor. */
+  commitItemDrag(beatIndex, itemIndex) {
+    const mesh = this.getMeshesForBeat(beatIndex)[itemIndex];
+    if (!mesh) return;
+    const item = mesh.userData.layout.item;
+    this.applyItemPatch(beatIndex, itemIndex, {
+      anchor: { x: item.anchor?.x ?? 0.5, y: item.anchor?.y ?? 0.5 },
+    });
+  }
+
   rebuildMeshLayout(mesh) {
     const { item, entry } = mesh.userData.layout;
     const tex = mesh.material.map;
@@ -737,14 +832,52 @@ export class BeatAssets {
     mesh.userData.layout.home = this.resolveHome(item, width, height);
   }
 
-  exportLayoutItems(beatIndex) {
+  /**
+   * Bake the live on-screen pose (and explicit visual fields) back onto each
+   * layout item so Save/Copy persist what the tuner is actually showing.
+   */
+  flushLayoutEdits(beatIndex) {
     const meshes = this.getMeshesForBeat(beatIndex);
+    for (const mesh of meshes) {
+      const layout = mesh?.userData?.layout;
+      const item = layout?.item;
+      if (!item) continue;
+
+      const home = layout.home;
+      const x = Number.isFinite(mesh.position?.x) ? mesh.position.x : home?.x;
+      const y = Number.isFinite(mesh.position?.y) ? mesh.position.y : home?.y;
+      if (Number.isFinite(x) && Number.isFinite(y)) {
+        const anchor = this.worldToAnchor(x, y);
+        item.anchor = { x: anchor.x, y: anchor.y };
+        if (home) {
+          home.x = x;
+          home.y = y;
+        }
+      }
+
+      if (item.blendMode == null) {
+        item.blendMode = "normal";
+      } else {
+        item.blendMode = canonicalizeBlendMode(item.blendMode);
+      }
+      if (item.opacity == null) {
+        item.opacity = layout.targetOpacity ?? 1;
+      }
+      if (item.rotation == null) item.rotation = 0;
+      if (item.scale == null) item.scale = 1;
+      if (item.z == null) item.z = 0;
+    }
+  }
+
+  exportLayoutItems(beatIndex) {
+    this.flushLayoutEdits(beatIndex);
+
+    const items = this.getActiveItems(null, beatIndex);
     const round = (value) => Math.round(value * 1000) / 1000;
 
-    return meshes.map((mesh) => {
-      const item = mesh.userData.layout.item;
+    return items.map((item) => {
       const visual = resolveItemVisual(item);
-      const exported = {
+      return {
         assetId: item.assetId,
         anchor: {
           x: round(item.anchor?.x ?? 0.5),
@@ -756,7 +889,6 @@ export class BeatAssets {
         blendMode: visual.blendMode,
         opacity: round(visual.opacity),
       };
-      return exported;
     });
   }
 
@@ -766,12 +898,22 @@ export class BeatAssets {
     const snapshot = this._layoutSnapshots.get(snapshotKey);
     if (!snapshot) return;
 
-    const layout = this.resolveBeatLayout(beatIndex);
-    const items = this.getActiveItems(layout, beatIndex);
-    items.splice(0, items.length, ...JSON.parse(JSON.stringify(snapshot)));
+    this.applyLayoutItems(beatIndex, snapshot);
+  }
 
-    for (let beat = 0; beat < this.beatCount; beat++) {
-      if (this.getLayoutIdForBeat(beat) !== layoutId) continue;
+  /** Replace active layout items and rebuild meshes (used by undo / reset). */
+  applyLayoutItems(beatIndex, items) {
+    if (!Array.isArray(items)) return;
+
+    const layoutId = this.getLayoutIdForBeat(beatIndex);
+    const layout = this.resolveBeatLayout(beatIndex);
+    const target = this.getActiveItems(layout, beatIndex);
+    if (this.isMobile && !layout.itemsMobile) {
+      layout.itemsMobile = target;
+    }
+    target.splice(0, target.length, ...JSON.parse(JSON.stringify(items)));
+
+    for (const beat of this.getBeatsForLayout(layoutId)) {
       this.rebuildBeatMeshes(beat);
     }
 
@@ -779,6 +921,12 @@ export class BeatAssets {
     if (this.layoutTuning && this.tuningBeat === beatIndex) {
       this.showSettled(beatIndex);
     }
+  }
+
+  /** Treat the current in-memory layout as the Reset baseline (e.g. after Save). */
+  commitLayoutSnapshot(beatIndex) {
+    const layoutId = this.getLayoutIdForBeat(beatIndex);
+    this.updateLayoutSnapshot(layoutId);
   }
 
   getManifestAssetIds() {
@@ -1405,6 +1553,7 @@ export class BeatAssets {
     window.removeEventListener("resize", this._onResize);
     window.removeEventListener("pointermove", this._onPointerMove);
     window.removeEventListener("pointerleave", this._onPointerLeave);
+    window.removeEventListener("outland:themechange", this._onThemeChange);
     this.fx?.dispose();
     if (this.selectionOutline) {
       this.scene.remove(this.selectionOutline);

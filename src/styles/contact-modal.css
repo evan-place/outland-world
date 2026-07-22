@@ -26,7 +26,7 @@ body.contact-modal-open {
   border: none;
   padding: 0;
   margin: 0;
-  background: rgba(29, 28, 26, 0.72);
+  background: var(--color-overlay);
   cursor: pointer;
 }
 
@@ -40,9 +40,9 @@ body.contact-modal-open {
   margin: 0;
   padding: 52px 48px 36px;
   box-sizing: border-box;
-  background: var(--foundation-black);
-  border: 1px solid var(--system-grey);
-  color: var(--monorail-white);
+  background: var(--color-bg);
+  border: var(--ui-stroke) solid var(--color-border);
+  color: var(--color-fg);
 }
 
 .contact-modal__panel {
@@ -62,7 +62,7 @@ body.contact-modal-open {
   border: none;
   border-radius: 200px;
   background: transparent;
-  color: var(--monorail-white);
+  color: var(--color-fg);
   font-family: var(--font-screen);
   font-size: 30px;
   line-height: 1;
@@ -75,8 +75,8 @@ body.contact-modal-open {
 }
 
 .contact-modal__close:focus-visible {
-  outline: 1px solid var(--monorail-white);
-  outline-offset: 3px;
+  outline: var(--ui-stroke) solid var(--color-fg);
+  outline-offset: var(--focus-ring-offset);
 }
 
 .contact-modal__headline {
@@ -103,7 +103,7 @@ body.contact-modal-open {
   padding: 0;
   border: none;
   background: transparent;
-  color: rgba(252, 252, 245, 0.42);
+  color: var(--color-muted-3);
   flex-shrink: 0;
   cursor: pointer;
   transition: color 0.18s ease;
@@ -112,12 +112,12 @@ body.contact-modal-open {
 .contact-modal__direct:hover,
 .contact-modal__direct:focus-visible,
 .contact-modal__direct[data-copied="true"] {
-  color: rgba(252, 252, 245, 0.78);
+  color: var(--color-muted-1);
 }
 
 .contact-modal__direct:focus-visible {
-  outline: 1px solid rgba(252, 252, 245, 0.55);
-  outline-offset: 3px;
+  outline: var(--ui-stroke) solid var(--color-muted-2);
+  outline-offset: var(--focus-ring-offset);
 }
 
 .contact-modal__email {
@@ -145,6 +145,16 @@ body.contact-modal-open {
   transition:
     opacity 0.22s ease,
     transform 0.22s ease;
+}
+
+.contact-modal__copy-icon path,
+.contact-modal__copy-icon rect,
+.contact-modal__check-icon path {
+  stroke: currentColor;
+  stroke-width: var(--icon-stroke);
+  vector-effect: non-scaling-stroke;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .contact-modal__copy-icon {
@@ -240,7 +250,7 @@ body.contact-modal-open {
   line-height: 1.2;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: rgba(252, 252, 245, 0.55);
+  color: var(--color-muted-2);
 }
 
 .contact-modal__optional {
@@ -256,10 +266,10 @@ body.contact-modal-open {
   padding: 0 0 10px;
   box-sizing: border-box;
   border: none;
-  border-bottom: 1px solid var(--system-grey);
+  border-bottom: var(--ui-stroke) solid var(--color-border);
   border-radius: 0;
   background: transparent;
-  color: var(--monorail-white);
+  color: var(--color-fg);
   font-family: var(--font-serif);
   font-size: 18px;
   line-height: 1.4;
@@ -276,7 +286,7 @@ body.contact-modal-open {
   border-bottom: none;
   /* Firefox */
   scrollbar-width: thin;
-  scrollbar-color: var(--system-grey) transparent;
+  scrollbar-color: var(--color-border) transparent;
 }
 
 .contact-modal__textarea::-webkit-scrollbar {
@@ -288,7 +298,7 @@ body.contact-modal-open {
 }
 
 .contact-modal__textarea::-webkit-scrollbar-thumb {
-  background: var(--system-grey);
+  background: var(--color-border);
   border-radius: 8px;
 }
 
@@ -300,13 +310,13 @@ body.contact-modal-open {
 
 .contact-modal__input::placeholder,
 .contact-modal__textarea::placeholder {
-  color: rgba(252, 252, 245, 0.28);
+  color: var(--color-muted-4);
 }
 
 .contact-modal__input:focus,
 .contact-modal__textarea:focus {
   outline: none;
-  border-bottom-color: var(--monorail-white);
+  border-bottom-color: var(--color-fg);
 }
 
 .contact-modal__actions {
@@ -318,7 +328,7 @@ body.contact-modal-open {
   flex-shrink: 0;
   margin-top: 24px;
   padding-top: 20px;
-  border-top: 1px solid var(--system-grey);
+  border-top: var(--ui-stroke) solid var(--color-border);
 }
 
 .contact-modal__submit {
@@ -327,10 +337,10 @@ body.contact-modal-open {
   justify-content: center;
   height: 40px;
   padding: 0 20px;
-  border: 1px solid var(--monorail-white);
+  border: var(--ui-stroke) solid var(--color-fg);
   border-radius: 200px;
   background: transparent;
-  color: var(--monorail-white);
+  color: var(--color-fg);
   font-family: var(--font-mono);
   font-size: 16px;
   line-height: 1;
@@ -350,8 +360,8 @@ body.contact-modal-open {
 }
 
 .contact-modal__submit:focus-visible {
-  outline: 1px solid var(--monorail-white);
-  outline-offset: 4px;
+  outline: var(--ui-stroke) solid var(--color-fg);
+  outline-offset: var(--focus-ring-offset);
 }
 
 .contact-modal__error {
@@ -360,7 +370,7 @@ body.contact-modal-open {
   font-family: var(--font-screen);
   font-size: 14px;
   line-height: 1.4;
-  color: rgba(252, 252, 245, 0.8);
+  color: var(--color-muted-1);
 }
 
 .contact-modal__form[data-success="true"] .contact-modal__input,

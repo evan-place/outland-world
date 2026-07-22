@@ -16,6 +16,10 @@ export class AssetFx {
     // Motion trails disabled — max-blend afterimage corrupts layered asset colors.
   }
 
+  setBackgroundColor(color) {
+    this._clearColor.set(color);
+  }
+
   setSize(_width, _height) {
     // Direct render uses the canvas/backbuffer; no composer targets to resize.
   }

@@ -4,16 +4,18 @@ const BLEND_MODES = [
   "plus-lighter",
 ];
 
-const ADDITIVE_BLEND_MODES = new Set([
-  "screen",
-  "lighten",
-  "color-dodge",
-  "plus-lighter",
-]);
-
+/** Map authored aliases onto the three modes Three.js actually distinguishes here. */
 function normalizeBlendMode(mode) {
   if (mode === "multiply") return "multiply";
-  if (ADDITIVE_BLEND_MODES.has(mode)) return "plus-lighter";
+  if (
+    mode === "plus-lighter" ||
+    mode === "screen" ||
+    mode === "lighten" ||
+    mode === "color-dodge"
+  ) {
+    return "plus-lighter";
+  }
+  // exclusion and anything else → normal (same WebGL path today)
   return "normal";
 }
 
@@ -40,8 +42,15 @@ function readItemValue(item, slider) {
   return item[slider.key] ?? 0;
 }
 
-export function initAssetLayoutTuner({ beatAssets, storyText, storyScroll, beats = [], assets = [] }) {
-  if (!import.meta.env.DEV || !beatAssets) return null;
+export function initAssetLayoutTuner({
+  beatAssets,
+  storyText,
+  storyScroll,
+  beats = [],
+  assets = [],
+  onClose = null,
+}) {
+  if (!beatAssets) return null;
 
   let beatIndex = 0;
   for (let i = 0; i < beats.length; i++) {
@@ -95,12 +104,34 @@ export function initAssetLayoutTuner({ beatAssets, storyText, storyScroll, beats
   copyBtn.className = "asset-layout-tuner__btn";
   copyBtn.textContent = "Copy";
 
+  const saveBtn = document.createElement("button");
+  saveBtn.type = "button";
+  saveBtn.className = "asset-layout-tuner__btn asset-layout-tuner__btn--primary";
+  saveBtn.textContent = "Save";
+  saveBtn.title = import.meta.env.DEV
+    ? "Write this layout to beat-layouts.json (⌘/Ctrl+S)"
+    : "Copy layout JSON for beat-layouts.json (⌘/Ctrl+S) — deploy can't write files";
+
+  const undoBtn = document.createElement("button");
+  undoBtn.type = "button";
+  undoBtn.className = "asset-layout-tuner__btn";
+  undoBtn.textContent = "Undo";
+  undoBtn.title = "Undo last layout change (⌘/Ctrl+Z)";
+  undoBtn.disabled = true;
+
   const resetBtn = document.createElement("button");
   resetBtn.type = "button";
   resetBtn.className = "asset-layout-tuner__btn";
   resetBtn.textContent = "Reset";
+  resetBtn.title = "Restore layout to last Save (or session start)";
 
-  actions.append(previewBtn, popOutBtn, copyBtn, resetBtn);
+  const exitBtn = document.createElement("button");
+  exitBtn.type = "button";
+  exitBtn.className = "asset-layout-tuner__btn";
+  exitBtn.textContent = "Exit";
+  exitBtn.title = "Close asset layout tuner (or right-click the logo)";
+
+  actions.append(previewBtn, popOutBtn, undoBtn, saveBtn, copyBtn, resetBtn, exitBtn);
   header.append(dragHandle, title, actions);
 
   const body = document.createElement("div");
@@ -200,12 +231,12 @@ export function initAssetLayoutTuner({ beatAssets, storyText, storyScroll, beats
     option.textContent = label;
     viewportSelect.append(option);
   }
-  viewportSelect.value = "mobile";
+  viewportSelect.value = "desktop";
   viewportRow.append(viewportLabel, viewportSelect);
 
   const viewportHint = document.createElement("p");
   viewportHint.className = "asset-layout-tuner__meta";
-  viewportHint.textContent = "Mobile preview uses the Figma frame 390×844.";
+  viewportHint.textContent = "Desktop layout — full window.";
 
   const dragRow = document.createElement("label");
   dragRow.className = "asset-layout-tuner__row asset-layout-tuner__row--check";
@@ -294,7 +325,7 @@ export function initAssetLayoutTuner({ beatAssets, storyText, storyScroll, beats
       backdrop-filter: blur(10px);
       box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
       pointer-events: auto;
-      touch-action: none;
+      touch-action: manipulation;
     }
 
     .asset-layout-tuner.is-minimized {
@@ -367,7 +398,10 @@ export function initAssetLayoutTuner({ beatAssets, storyText, storyScroll, beats
 
     .asset-layout-tuner__actions {
       display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
       gap: 6px;
+      max-width: 210px;
     }
 
     .asset-layout-tuner__btn,
@@ -380,6 +414,16 @@ export function initAssetLayoutTuner({ beatAssets, storyText, storyScroll, beats
       color: inherit;
       font: inherit;
       cursor: pointer;
+    }
+
+    .asset-layout-tuner__btn--primary {
+      border-color: rgba(252, 252, 245, 0.55);
+      background: rgba(252, 252, 245, 0.12);
+    }
+
+    .asset-layout-tuner__btn:disabled {
+      opacity: 0.35;
+      cursor: default;
     }
 
     .asset-layout-tuner__select {
@@ -596,9 +640,144 @@ export function initAssetLayoutTuner({ beatAssets, storyText, storyScroll, beats
     applyBeat();
   };
 
-  const applyPatch = (patch) => {
+  const applyPatch = (patch, { recordUndo = true } = {}) => {
+    if (recordUndo) pushUndo();
     beatAssets.applyItemPatch(beatIndex, itemIndex, patch);
     syncSlidersFromItem();
+  };
+
+  const MAX_UNDO = 40;
+  const undoStack = [];
+
+  const syncUndoButton = () => {
+    undoBtn.disabled = undoStack.length === 0;
+    undoBtn.title =
+      undoStack.length === 0
+        ? "Nothing to undo"
+        : `Undo last layout change (${undoStack.length}) — ⌘/Ctrl+Z`;
+  };
+
+  const pushUndo = () => {
+    undoStack.push({
+      beatIndex,
+      isMobile: beatAssets.isMobile,
+      itemIndex,
+      items: JSON.parse(JSON.stringify(beatAssets.exportLayoutItems(beatIndex))),
+    });
+    if (undoStack.length > MAX_UNDO) undoStack.shift();
+    syncUndoButton();
+  };
+
+  const flashButton = (button, label, ms = 1200) => {
+    const prev = button.textContent;
+    button.textContent = label;
+    window.setTimeout(() => {
+      button.textContent = prev;
+    }, ms);
+  };
+
+  const performUndo = async () => {
+    const entry = undoStack.pop();
+    syncUndoButton();
+    if (!entry) return;
+
+    const needViewport =
+      entry.isMobile !== beatAssets.isMobile
+        ? entry.isMobile
+          ? "mobile"
+          : "desktop"
+        : null;
+
+    if (needViewport) {
+      viewportSelect.value = needViewport;
+      beatAssets.setLayoutViewportOverride(needViewport);
+      storyText?.resize?.();
+    }
+
+    beatIndex = entry.beatIndex;
+    beatSelect.value = String(beatIndex);
+    beatAssets.applyLayoutItems(beatIndex, entry.items);
+    beatAssets.freezeForTuning(beatIndex);
+    beatAssets.setLayoutTuningOptions({ skipSafeZoneNudge: safeZoneCheck.checked });
+    storyScroll?.jumpToBeat?.(beatIndex);
+    storyText?.showSettled?.(beatIndex);
+
+    const layoutId = beatAssets.getLayoutIdForBeat(beatIndex);
+    layoutMeta.textContent = beatAssets.isMobile
+      ? `Layout: ${layoutId} · mobile`
+      : `Layout: ${layoutId} · desktop`;
+
+    itemIndex = Math.max(0, Math.min(entry.itemIndex, getMeshes().length - 1));
+    refreshAssetOptions();
+    selectAsset(itemIndex);
+  };
+
+  const performSave = async () => {
+    // Finish any in-progress drag so the saved pose matches the screen.
+    if (dragging) {
+      beatAssets.commitItemDrag(beatIndex, itemIndex);
+      dragging = null;
+      canvas.style.cursor = dragEnabled ? "grab" : "pointer";
+      document.body.style.userSelect = "";
+    }
+
+    const layoutId = beatAssets.getLayoutIdForBeat(beatIndex);
+    const items = beatAssets.exportLayoutItems(beatIndex);
+    if (!items.length) {
+      flashButton(saveBtn, "Empty");
+      console.error("[asset-layout-tuner] refused to save empty layout", layoutId);
+      return;
+    }
+
+    const payload = beatAssets.isMobile
+      ? { id: layoutId, itemsMobile: items }
+      : { id: layoutId, items };
+    const text = JSON.stringify(payload, null, 2);
+
+    saveBtn.disabled = true;
+    try {
+      const res = await fetch("/__outland/save-beat-layout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) {
+        throw new Error(data.error || `Save failed (${res.status})`);
+      }
+      // Keep in-memory layout + Reset baseline aligned with what we wrote.
+      beatAssets.applyLayoutItems(beatIndex, items);
+      beatAssets.commitLayoutSnapshot(beatIndex);
+      syncSlidersFromItem();
+      flashButton(saveBtn, "Saved");
+      console.info("[asset-layout-tuner] saved", layoutId, {
+        count: items.length,
+        mobile: beatAssets.isMobile,
+        blendModes: items.map((item) => item.blendMode),
+      });
+    } catch (err) {
+      console.error("[asset-layout-tuner] save failed", err);
+      if (import.meta.env.DEV) {
+        // Locally the write endpoint should work — don't disguise failure as Copied.
+        flashButton(saveBtn, "Failed");
+      } else {
+        try {
+          await navigator.clipboard.writeText(text);
+          beatAssets.commitLayoutSnapshot(beatIndex);
+          flashButton(saveBtn, "Copied");
+          console.info(
+            "[asset-layout-tuner] Deploy can't write files — layout JSON copied. Paste into src/data/beat-layouts.json.",
+            payload,
+          );
+        } catch (copyErr) {
+          console.error("[asset-layout-tuner] clipboard failed", copyErr);
+          console.log("Asset layout:", text);
+          flashButton(saveBtn, "Logged");
+        }
+      }
+    } finally {
+      saveBtn.disabled = false;
+    }
   };
 
   let popOutWindow = null;
@@ -847,10 +1026,26 @@ export function initAssetLayoutTuner({ beatAssets, storyText, storyScroll, beats
   header.addEventListener("pointercancel", onPanelPointerUp);
 
   const onPreviewKeyDown = (event) => {
-    if (event.key !== "p" && event.key !== "P") return;
-    if (event.metaKey || event.ctrlKey || event.altKey) return;
+    const mod = event.metaKey || event.ctrlKey;
     const tag = event.target?.tagName;
-    if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") return;
+    const inField = tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA";
+
+    if (mod && event.key.toLowerCase() === "s") {
+      event.preventDefault();
+      void performSave();
+      return;
+    }
+
+    if (mod && event.key.toLowerCase() === "z" && !event.shiftKey) {
+      if (inField) return;
+      event.preventDefault();
+      void performUndo();
+      return;
+    }
+
+    if (event.key !== "p" && event.key !== "P") return;
+    if (mod || event.altKey) return;
+    if (inField) return;
     event.preventDefault();
     setMinimized(!panel.classList.contains("is-minimized"));
   };
@@ -874,8 +1069,11 @@ export function initAssetLayoutTuner({ beatAssets, storyText, storyScroll, beats
   swapSelect.addEventListener("change", async () => {
     const assetId = swapSelect.value;
     if (!assetId || assetId === getItem()?.assetId) return;
+    pushUndo();
     const ok = await beatAssets.swapLayoutItemAsset(beatIndex, itemIndex, assetId);
     if (!ok) {
+      undoStack.pop();
+      syncUndoButton();
       swapSelect.value = getItem()?.assetId ?? assetId;
       return;
     }
@@ -886,8 +1084,13 @@ export function initAssetLayoutTuner({ beatAssets, storyText, storyScroll, beats
   addBtn.addEventListener("click", async () => {
     const assetId = addSelect.value;
     if (!assetId) return;
+    pushUndo();
     const ok = await beatAssets.addLayoutItem(beatIndex, assetId);
-    if (!ok) return;
+    if (!ok) {
+      undoStack.pop();
+      syncUndoButton();
+      return;
+    }
     itemIndex = getMeshes().length - 1;
     refreshAssetOptions();
     selectAsset(itemIndex);
@@ -896,8 +1099,13 @@ export function initAssetLayoutTuner({ beatAssets, storyText, storyScroll, beats
   removeBtn.addEventListener("click", () => {
     const meshes = getMeshes();
     if (meshes.length <= 1) return;
+    pushUndo();
     const ok = beatAssets.removeLayoutItem(beatIndex, itemIndex);
-    if (!ok) return;
+    if (!ok) {
+      undoStack.pop();
+      syncUndoButton();
+      return;
+    }
     itemIndex = Math.min(itemIndex, getMeshes().length - 1);
     refreshAssetOptions();
     selectAsset(itemIndex);
@@ -911,7 +1119,27 @@ export function initAssetLayoutTuner({ beatAssets, storyText, storyScroll, beats
     beatAssets.setLayoutTuningOptions({ skipSafeZoneNudge: safeZoneCheck.checked });
   });
 
+  undoBtn.addEventListener("click", () => {
+    void performUndo();
+  });
+
+  saveBtn.addEventListener("click", () => {
+    void performSave();
+  });
+
+  exitBtn.addEventListener("click", () => {
+    if (typeof onClose === "function") onClose();
+    else destroyTuner();
+  });
+
   copyBtn.addEventListener("click", async () => {
+    if (dragging) {
+      beatAssets.commitItemDrag(beatIndex, itemIndex);
+      dragging = null;
+      canvas.style.cursor = dragEnabled ? "grab" : "pointer";
+      document.body.style.userSelect = "";
+    }
+
     const layoutId = beatAssets.getLayoutIdForBeat(beatIndex);
     const items = beatAssets.exportLayoutItems(beatIndex);
     const payload = beatAssets.isMobile
@@ -921,16 +1149,10 @@ export function initAssetLayoutTuner({ beatAssets, storyText, storyScroll, beats
 
     try {
       await navigator.clipboard.writeText(text);
-      copyBtn.textContent = "Copied";
-      window.setTimeout(() => {
-        copyBtn.textContent = "Copy";
-      }, 1200);
+      flashButton(copyBtn, "Copied");
     } catch {
       console.log("Asset layout:", text);
-      copyBtn.textContent = "Logged";
-      window.setTimeout(() => {
-        copyBtn.textContent = "Copy";
-      }, 1200);
+      flashButton(copyBtn, "Logged");
     }
   });
 
@@ -945,26 +1167,43 @@ export function initAssetLayoutTuner({ beatAssets, storyText, storyScroll, beats
   canvas.style.cursor = dragEnabled ? "grab" : "pointer";
 
   for (const [key, { input, value }] of sliders) {
+    let sliderGesture = false;
+    const beginSliderGesture = () => {
+      if (sliderGesture) return;
+      pushUndo();
+      sliderGesture = true;
+    };
+    const endSliderGesture = () => {
+      sliderGesture = false;
+    };
+
+    input.addEventListener("pointerdown", beginSliderGesture);
+    input.addEventListener("pointerup", endSliderGesture);
+    input.addEventListener("pointercancel", endSliderGesture);
+    input.addEventListener("change", endSliderGesture);
+
     input.addEventListener("input", () => {
+      beginSliderGesture();
       const config = SLIDERS.find((slider) => slider.key === key);
       const numeric = Number(input.value);
       value.textContent = formatValue(numeric);
 
       if (config.itemKey === "anchor") {
-        applyPatch({ anchor: { [config.axis]: numeric } });
+        applyPatch({ anchor: { [config.axis]: numeric } }, { recordUndo: false });
         return;
       }
 
       if (key === "opacity") {
-        applyPatch({ opacity: numeric });
+        applyPatch({ opacity: numeric }, { recordUndo: false });
         return;
       }
 
-      applyPatch({ [key]: numeric });
+      applyPatch({ [key]: numeric }, { recordUndo: false });
     });
   }
 
   resetBtn.addEventListener("click", () => {
+    pushUndo();
     beatAssets.resetLayoutForBeat(beatIndex);
     syncSlidersFromItem();
   });
@@ -985,33 +1224,64 @@ export function initAssetLayoutTuner({ beatAssets, storyText, storyScroll, beats
 
     if (!dragEnabled) return;
 
+    const world = beatAssets.clientToWorldXY(event.clientX, event.clientY, mesh.position.z);
+    if (!world) return;
+
     dragging = {
-      lastX: event.clientX,
-      lastY: event.clientY,
+      pointerId: event.pointerId,
+      offsetX: mesh.position.x - world.x,
+      offsetY: mesh.position.y - world.y,
+      z: mesh.position.z,
+      recordedUndo: false,
     };
+    canvas.style.cursor = "grabbing";
+    document.body.style.userSelect = "none";
     canvas.setPointerCapture?.(event.pointerId);
     event.preventDefault();
   };
 
+  let dragSyncRaf = null;
+  const queueSliderSync = () => {
+    if (dragSyncRaf != null) return;
+    dragSyncRaf = requestAnimationFrame(() => {
+      dragSyncRaf = null;
+      if (!dragging) return;
+      syncSlidersFromItem();
+    });
+  };
+
   const onPointerMove = (event) => {
-    if (!dragging) return;
+    if (!dragging || event.pointerId !== dragging.pointerId) return;
 
-    const rect = canvas.getBoundingClientRect();
-    const worldPerPxX = 18 / rect.width;
-    const worldPerPxY = 11 / rect.height;
-    const dx = (event.clientX - dragging.lastX) * worldPerPxX;
-    const dy = (dragging.lastY - event.clientY) * worldPerPxY;
+    const world = beatAssets.clientToWorldXY(event.clientX, event.clientY, dragging.z);
+    if (!world) return;
 
-    dragging.lastX = event.clientX;
-    dragging.lastY = event.clientY;
-    beatAssets.moveItemByWorldDelta(beatIndex, itemIndex, dx, dy);
-    syncSlidersFromItem();
+    if (!dragging.recordedUndo) {
+      pushUndo();
+      dragging.recordedUndo = true;
+    }
+
+    beatAssets.dragItemToWorld(
+      beatIndex,
+      itemIndex,
+      world.x + dragging.offsetX,
+      world.y + dragging.offsetY,
+    );
+    queueSliderSync();
     event.preventDefault();
   };
 
   const onPointerUp = (event) => {
-    if (!dragging) return;
+    if (!dragging || event.pointerId !== dragging.pointerId) return;
     dragging = null;
+    if (dragSyncRaf != null) {
+      cancelAnimationFrame(dragSyncRaf);
+      dragSyncRaf = null;
+    }
+    beatAssets.commitItemDrag(beatIndex, itemIndex);
+    syncSlidersFromItem();
+    canvas.style.cursor = dragEnabled ? "grab" : "pointer";
+    document.body.style.userSelect = "";
     canvas.releasePointerCapture?.(event.pointerId);
   };
 
@@ -1024,31 +1294,41 @@ export function initAssetLayoutTuner({ beatAssets, storyText, storyScroll, beats
   restorePanelState();
   window.setTimeout(applyViewportMode, 600);
 
+  const destroyTuner = () => {
+    if (dragging) {
+      dragging = null;
+      document.body.style.userSelect = "";
+    }
+    if (dragSyncRaf != null) {
+      cancelAnimationFrame(dragSyncRaf);
+      dragSyncRaf = null;
+    }
+    window.removeEventListener("keydown", onPreviewKeyDown);
+    header.removeEventListener("pointerdown", onPanelPointerDown);
+    header.removeEventListener("pointermove", onPanelPointerMove);
+    header.removeEventListener("pointerup", onPanelPointerUp);
+    header.removeEventListener("pointercancel", onPanelPointerUp);
+    canvas.removeEventListener("pointerdown", onPointerDown);
+    canvas.removeEventListener("pointermove", onPointerMove);
+    canvas.removeEventListener("pointerup", onPointerUp);
+    canvas.removeEventListener("pointercancel", onPointerUp);
+    canvas.style.pointerEvents = "";
+    beatAssets.setLayoutViewportOverride(null);
+    beatAssets.clearTuningSelection?.();
+    document.documentElement.classList.remove("asset-layout-tuner-mobile");
+    document.getElementById("asset-layout-tuner-mobile-badge")?.remove();
+    canvas.style.cursor = "";
+    if (popOutWindow && !popOutWindow.closed) {
+      popOutWindow.close();
+    }
+    popOutWindow = null;
+    panel.remove();
+    style.remove();
+    beatAssets.endLayoutTuning();
+  };
+
   return {
     panel,
-    destroy() {
-      window.removeEventListener("keydown", onPreviewKeyDown);
-      header.removeEventListener("pointerdown", onPanelPointerDown);
-      header.removeEventListener("pointermove", onPanelPointerMove);
-      header.removeEventListener("pointerup", onPanelPointerUp);
-      header.removeEventListener("pointercancel", onPanelPointerUp);
-      canvas.removeEventListener("pointerdown", onPointerDown);
-      canvas.removeEventListener("pointermove", onPointerMove);
-      canvas.removeEventListener("pointerup", onPointerUp);
-      canvas.removeEventListener("pointercancel", onPointerUp);
-      canvas.style.pointerEvents = "";
-      beatAssets.setLayoutViewportOverride(null);
-      beatAssets.clearTuningSelection?.();
-      document.documentElement.classList.remove("asset-layout-tuner-mobile");
-      document.getElementById("asset-layout-tuner-mobile-badge")?.remove();
-      canvas.style.cursor = "";
-      if (popOutWindow && !popOutWindow.closed) {
-        popOutWindow.close();
-      }
-      popOutWindow = null;
-      panel.remove();
-      style.remove();
-      beatAssets.endLayoutTuning();
-    },
+    destroy: destroyTuner,
   };
 }

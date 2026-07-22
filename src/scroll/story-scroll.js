@@ -387,6 +387,8 @@ export function initStoryScroll({ beats, onBeatChange, getAssetSettleDelayMs, on
     const tag = target.tagName;
     if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
     if (target.isContentEditable) return true;
+    // Dev panels own their wheel/scroll (e.g. asset layout tuner body).
+    if (target.closest(".asset-layout-tuner, .lens-tuner")) return true;
     return Boolean(target.closest("input, textarea, select, [contenteditable='true']"));
   };
 

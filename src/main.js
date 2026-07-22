@@ -4,6 +4,7 @@ import storyData from "./data/story.json";
 import { initAmbientAudio } from "./audio/ambient-audio.js";
 import { initRail } from "./chrome/rail.js";
 import { initSelectionFx } from "./chrome/selection-fx.js";
+import { initThemeToggle } from "./chrome/theme-toggle.js";
 import { BeatAssets } from "./scene/beat-assets.js";
 import { StoryText } from "./scene/story-text.js";
 import { initStoryScroll } from "./scroll/story-scroll.js";
@@ -21,6 +22,7 @@ function main() {
   initAmbientAudio();
   initRail();
   initSelectionFx();
+  initThemeToggle();
 
   const contactOpen = document.getElementById("contact-open");
   let contactModal = null;
@@ -61,21 +63,20 @@ function main() {
   });
 
   window.addEventListener("resize", () => storyText.resize());
+  window.addEventListener("outland:themechange", () => {
+    void storyText.resize();
+  });
 
-  // Dev asset layout tuner — re-enable when tuning beat layouts.
-  // if (import.meta.env.DEV) {
-  //   beatAssets.loadPromise?.then(() => {
-  //     import("./dev/asset-layout-tuner.js").then(({ initAssetLayoutTuner }) => {
-  //       initAssetLayoutTuner({
-  //         beatAssets,
-  //         storyText,
-  //         storyScroll,
-  //         beats,
-  //         assets: assetsManifest.assets,
-  //       });
-  //     });
-  //   });
-  // }
+  // Asset layout tuner — hidden gate (right-click logo). Remove before public launch.
+  import("./dev/asset-layout-tuner-gate.js").then(({ mountAssetLayoutTunerGate }) => {
+    mountAssetLayoutTunerGate({
+      beatAssets,
+      storyText,
+      storyScroll,
+      beats,
+      assets: assetsManifest.assets,
+    });
+  });
 
   // Dev lens tuner — re-enable when tuning shader params.
   // if (import.meta.env.DEV) {
