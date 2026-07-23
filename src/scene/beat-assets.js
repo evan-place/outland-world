@@ -47,6 +47,8 @@ function applyBlendToMaterial(material, blendMode, opacity = 1) {
   material.alphaTest = 0;
   material.depthWrite = isNormal && fullyOpaque && !isAdditive;
   material.depthTest = true;
+  // Blending is not a uniform — force program/state refresh when it changes.
+  material.needsUpdate = true;
 }
 
 function shouldBakeOpaqueAlpha(entry) {
@@ -748,6 +750,7 @@ export class BeatAssets {
       const beatMesh = beatMeshes[itemIndex];
       if (!beatMesh) continue;
       beatMesh.userData.layout.item = item;
+      // rebuildMeshLayout → syncMeshVisual recreates the material when blend changes
       this.rebuildMeshLayout(beatMesh);
     }
 
@@ -810,6 +813,37 @@ export class BeatAssets {
     });
   }
 
+  /** Keep material blend mode in sync with the layout item (and rebuild if needed). */
+  syncMeshVisual(mesh, { recreateMaterial = false } = {}) {
+    const layout = mesh?.userData?.layout;
+    const item = layout?.item;
+    if (!item || !mesh.material) return;
+
+    const visual = resolveItemVisual(item);
+    const prevBlend = layout.appliedBlendMode;
+    const blendChanged = prevBlend != null && prevBlend !== visual.blendMode;
+    const shouldRecreate = recreateMaterial || blendChanged;
+
+    if (shouldRecreate) {
+      const map = mesh.material.map;
+      const opacity = mesh.material.opacity;
+      const oldMat = mesh.material;
+      const mat = new THREE.MeshBasicMaterial({
+        map,
+        opacity,
+        side: THREE.DoubleSide,
+      });
+      applyBlendToMaterial(mat, visual.blendMode, visual.opacity);
+      mesh.material = mat;
+      oldMat.dispose();
+    } else {
+      applyBlendToMaterial(mesh.material, visual.blendMode, visual.opacity);
+    }
+
+    layout.appliedBlendMode = visual.blendMode;
+    layout.targetOpacity = visual.opacity;
+  }
+
   rebuildMeshLayout(mesh) {
     const { item, entry } = mesh.userData.layout;
     const tex = mesh.material.map;
@@ -826,9 +860,7 @@ export class BeatAssets {
     mesh.geometry.dispose();
     mesh.geometry = new THREE.PlaneGeometry(width, height);
 
-    const visual = resolveItemVisual(item);
-    applyBlendToMaterial(mesh.material, visual.blendMode, visual.opacity);
-    mesh.userData.layout.targetOpacity = visual.opacity;
+    this.syncMeshVisual(mesh);
     mesh.userData.layout.home = this.resolveHome(item, width, height);
   }
 
@@ -1003,6 +1035,7 @@ export class BeatAssets {
       itemIndex,
       item,
       entry,
+      appliedBlendMode: visual.blendMode,
       targetOpacity: visual.opacity,
       home: this.resolveHome(item, width, height),
     };
@@ -1057,7 +1090,8 @@ export class BeatAssets {
       this.beatMeshes.set(beat, meshes);
     }
 
-    if (this.layoutTuning) this.updateLayoutSnapshot(layoutId);
+    // Do not refresh the Reset snapshot here — that made mid-edit add/remove
+    // bake blend/pose into the baseline so later Reset looked like a mysterious revert.
     this.updateAllMeshes();
     if (this.layoutTuning) this.showSettled(beatIndex);
     return true;
@@ -1083,7 +1117,6 @@ export class BeatAssets {
       this.beatMeshes.set(beat, meshes);
     }
 
-    if (this.layoutTuning) this.updateLayoutSnapshot(layoutId);
     this.updateAllMeshes();
     if (this.layoutTuning) this.showSettled(beatIndex);
     return true;
@@ -1281,12 +1314,20 @@ export class BeatAssets {
   }
 
   applyMeshState(mesh, role, { incomingT = 1, leavingT = 1 } = {}) {
-    const { home, targetOpacity } = mesh.userData.layout;
+    const { home, targetOpacity, item, appliedBlendMode } = mesh.userData.layout;
 
     if (role === "hidden") {
       mesh.visible = false;
       mesh.userData.basePosition = null;
       return;
+    }
+
+    // Re-assert blend if the item changed (or material was replaced elsewhere).
+    if (item) {
+      const visual = resolveItemVisual(item);
+      if (appliedBlendMode !== visual.blendMode) {
+        this.syncMeshVisual(mesh, { recreateMaterial: true });
+      }
     }
 
     mesh.visible = true;
@@ -1456,6 +1497,12 @@ export class BeatAssets {
   }
 
   setBeatState(fromIndex, progress, direction = 1) {
+    // Story scroll must not fight the tuner — keep the selected beat settled.
+    if (this.layoutTuning && !this.layoutTuningLivePreview) {
+      if (this.tuningBeat != null) this.showSettled(this.tuningBeat);
+      return;
+    }
+
     const beatCount = this.beatCount;
     const from = Math.max(0, Math.min(beatCount - 1, fromIndex));
     const to = Math.min(beatCount - 1, from + 1);

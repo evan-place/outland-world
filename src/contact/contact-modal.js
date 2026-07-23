@@ -1,8 +1,8 @@
 import { CONTACT } from "../config.js";
 import { refreshSelectionFx } from "../chrome/selection-fx.js";
-import { playUiClick, playSuccessClick } from "../audio/ui-beep.js";
+import { playCtaOpen, playCtaClose, playSuccessClick } from "../audio/ui-beep.js";
 
-const CTA_CLICK_RATE = 0.7;
+const CTA_CLICK_RATE = 1;
 
 const FOCUSABLE =
   'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
@@ -132,7 +132,7 @@ export function initContactModal() {
   };
 
   const close = () => {
-    playUiClick(CTA_CLICK_RATE);
+    playCtaClose(CTA_CLICK_RATE);
     modal.classList.remove("contact-modal--visible");
     modal.setAttribute("aria-hidden", "true");
     document.body.classList.remove("contact-modal-open");
@@ -155,7 +155,7 @@ export function initContactModal() {
   };
 
   openBtn.addEventListener("click", () => {
-    playUiClick(CTA_CLICK_RATE);
+    playCtaOpen(CTA_CLICK_RATE);
     open();
   });
 

@@ -1,4 +1,4 @@
-import { playUiClick } from "../audio/ui-beep.js";
+import { playUiOpen, playUiClose } from "../audio/ui-beep.js";
 
 const US_TZ = "America/New_York";
 const WALES_TZ = "Europe/London";
@@ -99,8 +99,11 @@ export function initRail() {
   };
 
   const toggle = () => {
-    playUiClick();
-    setOpen(!rail.classList.contains("chrome-rail--open"));
+    const opening = !rail.classList.contains("chrome-rail--open");
+    // Slightly lower than the default synth voice.
+    if (opening) playUiOpen(0.88);
+    else playUiClose(0.88);
+    setOpen(opening);
   };
 
   toggles.forEach((btn) => {
@@ -109,6 +112,7 @@ export function initRail() {
 
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && rail.classList.contains("chrome-rail--open")) {
+      playUiClose(0.88);
       setOpen(false);
     }
   });

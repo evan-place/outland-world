@@ -211,7 +211,7 @@
           "rotation": -16.5,
           "z": 0.3,
           "scale": 2.5,
-          "blendMode": "plus-lighter",
+          "blendMode": "multiply",
           "opacity": 0.77
         },
         {
@@ -285,7 +285,7 @@
           "rotation": -14,
           "z": 0.3,
           "scale": 1.26,
-          "blendMode": "plus-lighter",
+          "blendMode": "multiply",
           "opacity": 0.77
         },
         {

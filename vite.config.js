@@ -67,16 +67,9 @@ function outlandSaveBeatLayoutPlugin() {
             layout.itemsMobile = payload.itemsMobile;
           }
 
-          // Avoid Vite HMR wiping the live tuner mid-edit.
-          server.watcher.unwatch(filePath);
+          // File is permanently ignored by the watcher (see server.watch.ignored)
+          // so Save never triggers a full-page HMR reload that wipes the tuner.
           await fs.writeFile(filePath, `${JSON.stringify(current, null, 2)}\n`, "utf8");
-          setTimeout(() => {
-            try {
-              server.watcher.add(filePath);
-            } catch {
-              // ignore
-            }
-          }, 750);
 
           res.setHeader("Content-Type", "application/json");
           res.end(JSON.stringify({ ok: true, id: layoutId }));
@@ -92,6 +85,14 @@ function outlandSaveBeatLayoutPlugin() {
 
 export default defineConfig({
   plugins: [outlandSaveBeatLayoutPlugin()],
+  server: {
+    watch: {
+      // Tuner Save writes this file; watching it causes a delayed full reload
+      // that looks like blend/layout edits "reverting". Refresh manually to
+      // pick up external edits to the JSON.
+      ignored: ["**/src/data/beat-layouts.json"],
+    },
+  },
   build: {
     rollupOptions: {
       output: {
