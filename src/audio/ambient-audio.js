@@ -1,5 +1,6 @@
 import { assetUrl } from "../utils/asset-url.js";
 import { mountAudioToggle } from "./audio-toggle.js";
+import { playCtaOpen, playCtaClose } from "./ui-beep.js";
 
 const TRACK_SRC = "/assets/Portals_of_Endless_Possibility_2026-07-14T115019.mp3";
 const DEFAULT_VOLUME = 0.7;
@@ -14,15 +15,32 @@ const IDLE = {
   shelfGain: 0,
 };
 
-/** CTA hover — grit/warble without a level jump. */
-const CTA_HOVER = {
-  filterHz: 2600,
-  filterQ: 1.8,
-  mix: 0.32,
-  rate: 0.965,
-  master: DEFAULT_VOLUME,
-  shelfGain: 0,
-};
+/**
+ * CTA hover tone from pointer position (hilos-style).
+ * yRatio 0 = top of CTA → bright/open; 1 = bottom → dark/muffled.
+ * Inspired by hilos.sh crowd hover: brightness = 1 - y, filter opens with brightness.
+ */
+function toneFromCtaPointer(xRatio, yRatio) {
+  const x = clamp01(xRatio);
+  const y = clamp01(yRatio);
+  const brightness = 1 - y;
+
+  // Exponential open like hilos (460 * 15.65^brightness), scaled for music bed.
+  const filterHz = 720 * Math.pow(16, brightness);
+  const filterQ = 0.75 + 2.2 * brightness;
+  // Top slightly sharper / higher; bottom a touch slower / darker.
+  const rate = 0.92 + 0.12 * brightness + 0.015 * (x - 0.5);
+  const shelfGain = -2.5 + 7 * brightness;
+
+  return {
+    filterHz: Math.min(16000, Math.max(480, filterHz)),
+    filterQ,
+    mix: 0,
+    rate: Math.min(1.06, Math.max(0.9, rate)),
+    master: DEFAULT_VOLUME,
+    shelfGain,
+  };
+}
 
 /** Audio-toggle hover — brighter pitch, softer level. */
 const AUDIO_HOVER = {
@@ -35,9 +53,15 @@ const AUDIO_HOVER = {
 };
 
 const RAMP_S = 0.28;
+const CTA_RAMP_S = 0.12;
 const AUDIO_HOVER_RAMP_S = 0.75;
 /** Waveshaper adds harmonics/peaks — pad wet so it matches dry loudness. */
 const WET_PAD = 0.42;
+
+function clamp01(value) {
+  if (Number.isNaN(value)) return 0;
+  return Math.min(1, Math.max(0, value));
+}
 
 function dryWetGains(mix) {
   const t = Math.min(1, Math.max(0, mix)) * Math.PI * 0.5;
@@ -60,6 +84,17 @@ function rampParam(param, value, when, seconds = RAMP_S) {
   param.linearRampToValueAtTime(value, when + seconds);
 }
 
+function pointerRatiosInElement(event, el) {
+  const rect = el.getBoundingClientRect();
+  if (rect.width < 1 || rect.height < 1) {
+    return { xRatio: 0.5, yRatio: 0.5 };
+  }
+  return {
+    xRatio: clamp01((event.clientX - rect.left) / rect.width),
+    yRatio: clamp01((event.clientY - rect.top) / rect.height),
+  };
+}
+
 export function initAmbientAudio() {
   const button = document.getElementById("audio-toggle");
   const cta = document.getElementById("contact-open");
@@ -73,9 +108,13 @@ export function initAmbientAudio() {
   let muted = true;
   let ctaHovering = false;
   let audioHovering = false;
+  let ctaXRatio = 0.5;
+  let ctaYRatio = 0.5;
   let graph = null;
   let rateTarget = IDLE.rate;
   let rateRaf = null;
+  let ctaMoveRaf = null;
+  let lastCtaToneMs = 0;
 
   const canHover = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -92,8 +131,9 @@ export function initAmbientAudio() {
       }
       return;
     }
-    // Ease toward target — slower = softer pitch glide (~0.8–1s).
-    const next = current + delta * 0.055;
+    // Ease toward target — softer glide while scrubbing the CTA.
+    const ease = ctaHovering ? 0.14 : 0.055;
+    const next = current + delta * ease;
     try {
       audio.playbackRate = next;
     } catch {
@@ -168,7 +208,7 @@ export function initAmbientAudio() {
 
   const currentTarget = () => {
     if (muted) return IDLE;
-    if (ctaHovering && !reduceMotion) return CTA_HOVER;
+    if (ctaHovering && !reduceMotion) return toneFromCtaPointer(ctaXRatio, ctaYRatio);
     if (audioHovering && !reduceMotion) return AUDIO_HOVER;
     return IDLE;
   };
@@ -183,8 +223,8 @@ export function initAmbientAudio() {
     const settlingPitch = Math.abs((audio.playbackRate || 1) - IDLE.rate) > 0.002;
     const seconds = reduceMotion
       ? 0.05
-      : target === CTA_HOVER
-        ? RAMP_S
+      : ctaHovering
+        ? CTA_RAMP_S
         : target === AUDIO_HOVER || audioHovering || settlingPitch
           ? AUDIO_HOVER_RAMP_S
           : RAMP_S;
@@ -232,20 +272,34 @@ export function initAmbientAudio() {
 
   button?.addEventListener("click", async () => {
     if (muted) {
+      playCtaOpen();
       applyMutedState(false);
       const ok = await startPlayback();
       if (!ok) {
         applyMutedState(true);
       }
     } else {
+      playCtaClose();
       applyMutedState(true);
       audio.pause();
     }
   });
 
-  const setCtaHover = (active) => {
-    ctaHovering = active;
+  const setCtaPointer = (event, { force = false } = {}) => {
+    if (!cta) return;
+    const { xRatio, yRatio } = pointerRatiosInElement(event, cta);
+    ctaXRatio = xRatio;
+    ctaYRatio = yRatio;
+    const now = performance.now();
+    if (!force && now - lastCtaToneMs < 32) return;
+    lastCtaToneMs = now;
     applyTone();
+  };
+
+  const setCtaHover = (active, event) => {
+    ctaHovering = active;
+    if (active && event) setCtaPointer(event, { force: true });
+    else applyTone();
   };
 
   const setAudioHover = (active) => {
@@ -254,11 +308,24 @@ export function initAmbientAudio() {
   };
 
   if (cta && canHover) {
-    cta.addEventListener("pointerenter", () => setCtaHover(true));
+    cta.addEventListener("pointerenter", (event) => setCtaHover(true, event));
     cta.addEventListener("pointerleave", () => setCtaHover(false));
+    cta.addEventListener("pointermove", (event) => {
+      if (!ctaHovering) return;
+      if (ctaMoveRaf != null) cancelAnimationFrame(ctaMoveRaf);
+      ctaMoveRaf = requestAnimationFrame(() => {
+        ctaMoveRaf = null;
+        setCtaPointer(event);
+      });
+    });
     cta.addEventListener("focus", () => {
       requestAnimationFrame(() => {
-        if (cta.matches(":focus-visible")) setCtaHover(true);
+        if (cta.matches(":focus-visible")) {
+          ctaHovering = true;
+          ctaXRatio = 0.5;
+          ctaYRatio = 0.35;
+          applyTone();
+        }
       });
     });
     cta.addEventListener("blur", () => {
@@ -284,6 +351,8 @@ export function initAmbientAudio() {
   return {
     audio,
     destroy() {
+      if (ctaMoveRaf != null) cancelAnimationFrame(ctaMoveRaf);
+      if (rateRaf != null) cancelAnimationFrame(rateRaf);
       toggleUi.destroy();
     },
   };

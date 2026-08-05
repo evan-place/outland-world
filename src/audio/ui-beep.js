@@ -80,80 +80,89 @@ function playSynthUiClick(rate = 1, gain = 1, direction = "neutral", voice = "so
   master.connect(ctx.destination);
 
   const rising = direction === "up";
+  const falling = direction === "down";
   const isClick = voice === "click";
 
-  // Transient — click voice leans harder on the noise fleck.
-  const noiseDur = isClick ? 0.012 : 0.018;
+  // Transient — click voice is mostly this sharp fleck.
+  const noiseDur = isClick ? 0.009 : 0.016;
   const noise = ctx.createBufferSource();
   noise.buffer = makeNoiseBuffer(ctx, noiseDur);
   const band = ctx.createBiquadFilter();
   band.type = "bandpass";
-  band.frequency.value = (rising ? 1900 : 2200) * pitch;
-  band.Q.value = isClick ? 1.15 : 0.8;
+  band.frequency.value = (isClick ? (rising ? 3200 : 2800) : rising ? 1700 : 2000) * pitch;
+  band.Q.value = isClick ? 2.2 : 0.75;
   const noiseGain = ctx.createGain();
-  noiseGain.gain.setValueAtTime(isClick ? 0.16 : 0.09, t0);
-  noiseGain.gain.exponentialRampToValueAtTime(0.001, t0 + (isClick ? 0.01 : 0.016));
+  noiseGain.gain.setValueAtTime(isClick ? 0.32 : 0.07, t0);
+  noiseGain.gain.exponentialRampToValueAtTime(0.001, t0 + (isClick ? 0.008 : 0.014));
   noise.connect(band);
   band.connect(noiseGain);
   noiseGain.connect(master);
   noise.start(t0);
   noise.stop(t0 + noiseDur);
 
-  // Body — click is a short blip; soft keeps the longer spring.
+  // Body — click is a tiny blip; soft keeps a mild spring (less plunge than before).
   const body = ctx.createOscillator();
-  body.type = isClick ? "triangle" : "sine";
+  body.type = isClick ? "square" : "sine";
   let fStart;
   let fEnd;
-  if (rising) {
-    fStart = (isClick ? 780 : 420) * pitch;
-    fEnd = (isClick ? 980 : 720) * pitch;
+  if (isClick) {
+    if (rising) {
+      fStart = 920 * pitch;
+      fEnd = 1040 * pitch;
+    } else if (falling) {
+      fStart = 1040 * pitch;
+      fEnd = 900 * pitch;
+    } else {
+      fStart = 980 * pitch;
+      fEnd = 940 * pitch;
+    }
+  } else if (rising) {
+    fStart = 480 * pitch;
+    fEnd = 580 * pitch;
+  } else if (falling) {
+    fStart = 560 * pitch;
+    fEnd = 460 * pitch;
   } else {
-    fStart = (isClick ? 980 : 740) * pitch;
-    fEnd = (isClick ? 720 : 400) * pitch;
+    fStart = 520 * pitch;
+    fEnd = 500 * pitch;
   }
-  const bodyMs = isClick ? 0.045 : 0.14;
+  const bodyMs = isClick ? 0.028 : 0.09;
   body.frequency.setValueAtTime(fStart, t0);
-  body.frequency.exponentialRampToValueAtTime(fEnd, t0 + bodyMs * 0.7);
-  if (!isClick) {
-    body.frequency.exponentialRampToValueAtTime(
-      rising ? fEnd * 0.98 : fEnd * 1.05,
-      t0 + bodyMs,
-    );
-  }
+  body.frequency.exponentialRampToValueAtTime(Math.max(40, fEnd), t0 + bodyMs);
   const bodyFilter = ctx.createBiquadFilter();
   bodyFilter.type = "lowpass";
-  bodyFilter.frequency.value = isClick ? 3200 : 2200;
-  bodyFilter.Q.value = isClick ? 0.9 : 0.7;
+  bodyFilter.frequency.value = isClick ? 4200 : 1800;
+  bodyFilter.Q.value = isClick ? 0.6 : 0.55;
   const bodyGain = ctx.createGain();
   bodyGain.gain.setValueAtTime(0.0001, t0);
-  bodyGain.gain.exponentialRampToValueAtTime(isClick ? 0.22 : 0.3, t0 + 0.002);
-  bodyGain.gain.exponentialRampToValueAtTime(0.0001, t0 + (isClick ? 0.05 : 0.155));
+  bodyGain.gain.exponentialRampToValueAtTime(isClick ? 0.1 : 0.2, t0 + 0.0015);
+  bodyGain.gain.exponentialRampToValueAtTime(0.0001, t0 + (isClick ? 0.032 : 0.095));
   body.connect(bodyFilter);
   bodyFilter.connect(bodyGain);
   bodyGain.connect(master);
   body.start(t0);
-  body.stop(t0 + (isClick ? 0.055 : 0.165));
+  body.stop(t0 + (isClick ? 0.038 : 0.1));
 
   if (isClick) return;
 
-  // Soft voice only — quiet sparkle tail.
+  // Soft voice only — quiet high fleck, no big rebound.
   const sparkle = ctx.createOscillator();
   sparkle.type = "triangle";
   if (rising) {
-    sparkle.frequency.setValueAtTime(780 * pitch, t0);
-    sparkle.frequency.exponentialRampToValueAtTime(1120 * pitch, t0 + 0.06);
+    sparkle.frequency.setValueAtTime(720 * pitch, t0);
+    sparkle.frequency.exponentialRampToValueAtTime(880 * pitch, t0 + 0.04);
   } else {
-    sparkle.frequency.setValueAtTime(1180 * pitch, t0);
-    sparkle.frequency.exponentialRampToValueAtTime(700 * pitch, t0 + 0.06);
+    sparkle.frequency.setValueAtTime(900 * pitch, t0);
+    sparkle.frequency.exponentialRampToValueAtTime(740 * pitch, t0 + 0.04);
   }
   const sparkleGain = ctx.createGain();
   sparkleGain.gain.setValueAtTime(0.0001, t0);
-  sparkleGain.gain.exponentialRampToValueAtTime(0.07, t0 + 0.002);
-  sparkleGain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.065);
+  sparkleGain.gain.exponentialRampToValueAtTime(0.035, t0 + 0.002);
+  sparkleGain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.045);
   sparkle.connect(sparkleGain);
   sparkleGain.connect(master);
   sparkle.start(t0);
-  sparkle.stop(t0 + 0.07);
+  sparkle.stop(t0 + 0.05);
 }
 
 /** @deprecated Prefer playUiClick — kept for any leftover hover wiring. */
