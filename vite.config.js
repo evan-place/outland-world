@@ -102,6 +102,8 @@ function outlandSaveBeatLayoutPlugin() {
 export default defineConfig({
   plugins: [outlandSaveBeatLayoutPlugin()],
   server: {
+    host: true,
+    allowedHosts: true,
     watch: {
       // Tuner Save writes this file; watching it causes a delayed full reload
       // that looks like blend/layout edits "reverting". Refresh manually to
