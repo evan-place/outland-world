@@ -1,8 +1,21 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { defineConfig } from "vite";
+import { defineConfig, normalizePath } from "vite";
 
 const LAYOUTS_REL = "src/data/beat-layouts.json";
+
+/** Drop the cached JSON module so a refresh loads what Save just wrote. */
+function invalidateLayoutsModule(server, filePath) {
+  const normalized = normalizePath(filePath);
+  const graphs = new Set();
+  if (server.moduleGraph) graphs.add(server.moduleGraph);
+  for (const environment of Object.values(server.environments ?? {})) {
+    if (environment?.moduleGraph) graphs.add(environment.moduleGraph);
+  }
+  for (const graph of graphs) {
+    graph.onFileChange?.(normalized);
+  }
+}
 
 function readRequestBody(req) {
   return new Promise((resolve, reject) => {
@@ -69,7 +82,10 @@ function outlandSaveBeatLayoutPlugin() {
 
           // File is permanently ignored by the watcher (see server.watch.ignored)
           // so Save never triggers a full-page HMR reload that wipes the tuner.
+          // We still have to invalidate Vite's transform cache — otherwise a
+          // refresh keeps serving the pre-Save JSON import and edits look lost.
           await fs.writeFile(filePath, `${JSON.stringify(current, null, 2)}\n`, "utf8");
+          invalidateLayoutsModule(server, filePath);
 
           res.setHeader("Content-Type", "application/json");
           res.end(JSON.stringify({ ok: true, id: layoutId }));
@@ -86,6 +102,8 @@ function outlandSaveBeatLayoutPlugin() {
 export default defineConfig({
   plugins: [outlandSaveBeatLayoutPlugin()],
   server: {
+    host: true,
+    allowedHosts: true,
     watch: {
       // Tuner Save writes this file; watching it causes a delayed full reload
       // that looks like blend/layout edits "reverting". Refresh manually to
