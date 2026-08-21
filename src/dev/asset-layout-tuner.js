@@ -1,3 +1,5 @@
+import { assetUrl } from "../utils/asset-url.js";
+
 const BLEND_MODES = [
   "normal",
   "multiply",
@@ -30,6 +32,192 @@ const SLIDERS = [
 
 function formatValue(value) {
   return Number.isInteger(value) ? String(value) : Number(value).toFixed(3);
+}
+
+function fileNameFromSrc(src) {
+  const file = String(src || "").split("/").pop() || "";
+  try {
+    return decodeURIComponent(file);
+  } catch {
+    return file;
+  }
+}
+
+function assetThumbUrl(src) {
+  if (!src) return "";
+  try {
+    return new URL(assetUrl(src), window.location.origin).href;
+  } catch {
+    return assetUrl(src);
+  }
+}
+
+function describeAsset(entries, assetId) {
+  const entry = entries.find((item) => item.id === assetId);
+  const fileName = fileNameFromSrc(entry?.src);
+  return {
+    id: assetId,
+    alt: entry?.alt || assetId,
+    fileName: fileName || assetId,
+    src: assetThumbUrl(entry?.src),
+  };
+}
+
+function createAssetThumb(src, alt) {
+  const img = document.createElement("img");
+  img.className = "asset-layout-tuner__thumb";
+  img.alt = alt || "";
+  img.loading = "lazy";
+  img.draggable = false;
+  if (src) img.src = src;
+  else img.hidden = true;
+  return img;
+}
+
+function createAssetPicker({ entries, labelledBy, compact = false }) {
+  let value = "";
+  let onChange = null;
+  let open = false;
+
+  const root = document.createElement("div");
+  root.className = `asset-picker${compact ? " asset-picker--compact" : ""}`;
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "asset-picker__button";
+  button.setAttribute("aria-haspopup", "listbox");
+  button.setAttribute("aria-expanded", "false");
+  if (labelledBy) button.setAttribute("aria-label", labelledBy);
+
+  const thumb = createAssetThumb("", "");
+  thumb.classList.add("asset-picker__thumb");
+
+  const copy = document.createElement("span");
+  copy.className = "asset-picker__copy";
+  const name = document.createElement("span");
+  name.className = "asset-picker__name";
+  const meta = document.createElement("span");
+  meta.className = "asset-picker__meta";
+  copy.append(name, meta);
+
+  const caret = document.createElement("span");
+  caret.className = "asset-picker__caret";
+  caret.textContent = "▾";
+  caret.setAttribute("aria-hidden", "true");
+
+  button.append(thumb, copy, caret);
+
+  const menu = document.createElement("div");
+  menu.className = "asset-picker__menu";
+  menu.hidden = true;
+
+  const search = document.createElement("input");
+  search.type = "search";
+  search.className = "asset-picker__search";
+  search.placeholder = "Filter by name or file";
+  search.setAttribute("aria-label", "Filter assets");
+
+  const grid = document.createElement("div");
+  grid.className = "asset-picker__grid";
+  grid.setAttribute("role", "listbox");
+
+  menu.append(search, grid);
+  root.append(button, menu);
+
+  const renderButton = () => {
+    const info = describeAsset(entries, value);
+    if (info.src) {
+      thumb.hidden = false;
+      thumb.src = info.src;
+      thumb.alt = info.alt;
+    } else {
+      thumb.hidden = true;
+      thumb.removeAttribute("src");
+    }
+    name.textContent = info.fileName || "Choose asset";
+    meta.textContent = info.id && info.id !== info.fileName ? info.id : info.alt !== info.fileName ? info.alt : "";
+  };
+
+  const renderGrid = (filter = "") => {
+    const query = filter.trim().toLowerCase();
+    grid.replaceChildren();
+    for (const entry of entries) {
+      const info = describeAsset(entries, entry.id);
+      const hay = `${info.id} ${info.alt} ${info.fileName}`.toLowerCase();
+      if (query && !hay.includes(query)) continue;
+
+      const option = document.createElement("button");
+      option.type = "button";
+      option.className = "asset-picker__option";
+      option.setAttribute("role", "option");
+      option.setAttribute("aria-selected", entry.id === value ? "true" : "false");
+      if (entry.id === value) option.classList.add("is-selected");
+      option.title = `${info.fileName} (${info.id})`;
+
+      const img = createAssetThumb(info.src, info.alt);
+      const label = document.createElement("span");
+      label.className = "asset-picker__option-label";
+      label.textContent = info.fileName;
+
+      option.append(img, label);
+      option.addEventListener("click", () => {
+        setValue(entry.id, { fromUser: true });
+        setOpen(false);
+      });
+      grid.append(option);
+    }
+  };
+
+  const setOpen = (next) => {
+    open = Boolean(next);
+    menu.hidden = !open;
+    root.classList.toggle("is-open", open);
+    button.setAttribute("aria-expanded", open ? "true" : "false");
+    if (open) {
+      renderGrid(search.value);
+      search.focus();
+    }
+  };
+
+  const setValue = (next, { fromUser = false } = {}) => {
+    value = next || "";
+    renderButton();
+    if (open) renderGrid(search.value);
+    if (fromUser) onChange?.(value);
+  };
+
+  button.addEventListener("click", (event) => {
+    event.stopPropagation();
+    setOpen(!open);
+  });
+
+  search.addEventListener("input", () => renderGrid(search.value));
+  search.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      setOpen(false);
+      button.focus();
+    }
+  });
+
+  return {
+    root,
+    get value() {
+      return value;
+    },
+    setValue(id) {
+      setValue(id, { fromUser: false });
+    },
+    onChange(fn) {
+      onChange = fn;
+    },
+    contains(node) {
+      return root.contains(node);
+    },
+    close() {
+      setOpen(false);
+    },
+  };
 }
 
 function readItemValue(item, slider) {
@@ -65,6 +253,9 @@ export function initAssetLayoutTuner({
   let panelDrag = null;
 
   const STORAGE_KEY = "outland-asset-layout-tuner";
+  const assetEntries = (assets.length > 0 ? assets : beatAssets.manifest?.assets ?? []).filter(
+    (entry) => entry.enabled !== false
+  );
 
   const panel = document.createElement("aside");
   panel.className = "asset-layout-tuner";
@@ -155,29 +346,36 @@ export function initAssetLayoutTuner({
   const layoutMeta = document.createElement("p");
   layoutMeta.className = "asset-layout-tuner__meta";
 
-  const assetRow = document.createElement("label");
+  const assetRow = document.createElement("div");
   assetRow.className = "asset-layout-tuner__field";
   const assetLabel = document.createElement("span");
   assetLabel.className = "asset-layout-tuner__label";
   assetLabel.textContent = "Layer";
-  const assetSelect = document.createElement("select");
-  assetSelect.className = "asset-layout-tuner__select";
-  assetRow.append(assetLabel, assetSelect);
+  const layerList = document.createElement("div");
+  layerList.className = "asset-layout-tuner__layers";
+  layerList.setAttribute("role", "listbox");
+  layerList.setAttribute("aria-label", "Layer");
+  assetRow.append(assetLabel, layerList);
 
   const assetActions = document.createElement("div");
   assetActions.className = "asset-layout-tuner__asset-actions";
 
-  const swapRow = document.createElement("label");
+  const swapRow = document.createElement("div");
   swapRow.className = "asset-layout-tuner__field";
   const swapLabel = document.createElement("span");
   swapLabel.className = "asset-layout-tuner__label";
   swapLabel.textContent = "Asset file";
-  const swapSelect = document.createElement("select");
-  swapSelect.className = "asset-layout-tuner__select";
-  swapRow.append(swapLabel, swapSelect);
+  const swapPicker = createAssetPicker({
+    entries: assetEntries,
+    labelledBy: "Asset file",
+  });
+  swapRow.append(swapLabel, swapPicker.root);
 
-  const addSelect = document.createElement("select");
-  addSelect.className = "asset-layout-tuner__select";
+  const addPicker = createAssetPicker({
+    entries: assetEntries,
+    labelledBy: "Asset to add",
+    compact: true,
+  });
   const addBtn = document.createElement("button");
   addBtn.type = "button";
   addBtn.className = "asset-layout-tuner__btn";
@@ -188,7 +386,7 @@ export function initAssetLayoutTuner({
   removeBtn.className = "asset-layout-tuner__btn";
   removeBtn.textContent = "Remove";
 
-  assetActions.append(addSelect, addBtn, removeBtn);
+  assetActions.append(addPicker.root, addBtn, removeBtn);
 
   const blendRow = document.createElement("label");
   blendRow.className = "asset-layout-tuner__field";
@@ -316,7 +514,7 @@ export function initAssetLayoutTuner({
       top: auto;
       right: auto;
       z-index: 10050;
-      width: 320px;
+      width: 360px;
       border: 1px solid rgba(252, 252, 245, 0.18);
       border-radius: 10px;
       background: rgba(29, 28, 26, 0.94);
@@ -459,7 +657,194 @@ export function initAssetLayoutTuner({
       display: grid;
       grid-template-columns: 1fr auto auto;
       gap: 6px;
+      align-items: start;
+    }
+
+    .asset-layout-tuner__layers {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-height: 168px;
+      overflow: auto;
+      padding: 2px;
+      margin: 0 -2px;
+    }
+
+    .asset-layout-tuner__layer {
+      display: grid;
+      grid-template-columns: 40px 1fr;
+      gap: 8px;
       align-items: center;
+      width: 100%;
+      margin: 0;
+      padding: 4px 8px 4px 4px;
+      border: 1px solid rgba(252, 252, 245, 0.16);
+      border-radius: 8px;
+      background: rgba(29, 28, 26, 0.55);
+      color: inherit;
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .asset-layout-tuner__layer:hover {
+      border-color: rgba(252, 252, 245, 0.4);
+    }
+
+    .asset-layout-tuner__layer.is-selected {
+      border-color: rgba(252, 252, 245, 0.55);
+      background: rgba(252, 252, 245, 0.12);
+    }
+
+    .asset-layout-tuner__layer-copy,
+    .asset-picker__copy {
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      gap: 1px;
+    }
+
+    .asset-layout-tuner__layer-file,
+    .asset-picker__name,
+    .asset-picker__option-label {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .asset-layout-tuner__layer-id,
+    .asset-picker__meta {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: rgba(252, 252, 245, 0.5);
+      font-size: 10px;
+    }
+
+    .asset-layout-tuner__thumb {
+      width: 40px;
+      height: 40px;
+      object-fit: contain;
+      background:
+        linear-gradient(45deg, rgba(252, 252, 245, 0.08) 25%, transparent 25%),
+        linear-gradient(-45deg, rgba(252, 252, 245, 0.08) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, rgba(252, 252, 245, 0.08) 75%),
+        linear-gradient(-45deg, transparent 75%, rgba(252, 252, 245, 0.08) 75%);
+      background-position: 0 0, 0 6px, 6px -6px, -6px 0;
+      background-size: 12px 12px;
+      background-color: rgba(12, 12, 11, 0.85);
+      border-radius: 4px;
+      flex-shrink: 0;
+    }
+
+    .asset-picker {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .asset-picker__button {
+      display: grid;
+      grid-template-columns: 48px 1fr auto;
+      gap: 8px;
+      align-items: center;
+      width: 100%;
+      margin: 0;
+      padding: 4px 8px 4px 4px;
+      border: 1px solid rgba(252, 252, 245, 0.22);
+      border-radius: 8px;
+      background: rgba(29, 28, 26, 0.8);
+      color: inherit;
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .asset-picker--compact .asset-picker__button {
+      grid-template-columns: 36px 1fr auto;
+      padding: 3px 8px 3px 3px;
+    }
+
+    .asset-picker--compact .asset-picker__thumb {
+      width: 32px;
+      height: 32px;
+    }
+
+    .asset-picker__button:hover,
+    .asset-picker.is-open .asset-picker__button {
+      border-color: rgba(252, 252, 245, 0.45);
+    }
+
+    .asset-picker__caret {
+      color: rgba(252, 252, 245, 0.45);
+    }
+
+    .asset-picker__menu {
+      border: 1px solid rgba(252, 252, 245, 0.16);
+      border-radius: 8px;
+      background: rgba(18, 17, 16, 0.96);
+    }
+
+    .asset-picker__search {
+      display: block;
+      width: 100%;
+      box-sizing: border-box;
+      margin: 0;
+      padding: 6px 8px;
+      border: none;
+      border-bottom: 1px solid rgba(252, 252, 245, 0.12);
+      border-radius: 8px 8px 0 0;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+    }
+
+    .asset-picker__search:focus {
+      outline: none;
+      background: rgba(252, 252, 245, 0.06);
+    }
+
+    .asset-picker__grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      max-height: 220px;
+      overflow: auto;
+      padding: 8px;
+    }
+
+    .asset-picker__option {
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      gap: 4px;
+      margin: 0;
+      padding: 4px;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .asset-picker__option:hover,
+    .asset-picker__option.is-selected {
+      border-color: rgba(252, 252, 245, 0.35);
+      background: rgba(252, 252, 245, 0.08);
+    }
+
+    .asset-picker__option .asset-layout-tuner__thumb {
+      width: 100%;
+      height: 64px;
+    }
+
+    .asset-picker__option-label {
+      font-size: 9px;
+      line-height: 1.2;
+      color: rgba(252, 252, 245, 0.78);
     }
 
     .asset-layout-tuner__meta {
@@ -545,45 +930,53 @@ export function initAssetLayoutTuner({
   `;
   document.head.appendChild(style);
 
-  const manifestAssetIds =
-    assets.length > 0
-      ? assets.filter((entry) => entry.enabled !== false).map((entry) => entry.id)
-      : beatAssets.getManifestAssetIds();
-
-  const populateManifestSelect = (select, selectedId) => {
-    select.replaceChildren();
-    for (const assetId of manifestAssetIds) {
-      const option = document.createElement("option");
-      option.value = assetId;
-      option.textContent = assetId;
-      select.append(option);
-    }
-    if (selectedId) select.value = selectedId;
-  };
-
   const getMeshes = () => beatAssets.getMeshesForBeat(beatIndex);
   const getItem = () => getMeshes()[itemIndex]?.userData.layout.item;
 
-  populateManifestSelect(swapSelect);
-  populateManifestSelect(addSelect, manifestAssetIds[0]);
+  if (assetEntries[0]) addPicker.setValue(assetEntries[0].id);
+
+  const syncLayerSelection = () => {
+    [...layerList.children].forEach((row, index) => {
+      const selected = index === itemIndex;
+      row.classList.toggle("is-selected", selected);
+      row.setAttribute("aria-selected", selected ? "true" : "false");
+    });
+  };
 
   const refreshAssetOptions = () => {
     const meshes = getMeshes();
-    assetSelect.replaceChildren();
+    layerList.replaceChildren();
     meshes.forEach((mesh, index) => {
-      const option = document.createElement("option");
-      option.value = String(index);
-      option.textContent = mesh.userData.layout.item.assetId;
-      assetSelect.append(option);
+      const assetId = mesh.userData.layout.item.assetId;
+      const info = describeAsset(assetEntries, assetId);
+      const row = document.createElement("button");
+      row.type = "button";
+      row.className = "asset-layout-tuner__layer";
+      row.setAttribute("role", "option");
+      row.title = `${info.fileName} (${info.id})`;
+
+      const img = createAssetThumb(info.src, info.alt);
+      const copy = document.createElement("span");
+      copy.className = "asset-layout-tuner__layer-copy";
+      const file = document.createElement("span");
+      file.className = "asset-layout-tuner__layer-file";
+      file.textContent = info.fileName;
+      const id = document.createElement("span");
+      id.className = "asset-layout-tuner__layer-id";
+      id.textContent = info.id;
+      copy.append(file, id);
+      row.append(img, copy);
+      row.addEventListener("click", () => selectAsset(index));
+      layerList.append(row);
     });
     itemIndex = Math.min(itemIndex, Math.max(0, meshes.length - 1));
-    assetSelect.value = String(itemIndex);
+    syncLayerSelection();
   };
 
   const selectAsset = (index) => {
     const meshes = getMeshes();
     itemIndex = Math.max(0, Math.min(index, meshes.length - 1));
-    assetSelect.value = String(itemIndex);
+    syncLayerSelection();
     syncSlidersFromItem();
     beatAssets.setTuningSelection(beatIndex, itemIndex);
   };
@@ -600,7 +993,7 @@ export function initAssetLayoutTuner({
     }
 
     blendSelect.value = normalizeBlendMode(item.blendMode ?? "normal");
-    swapSelect.value = item.assetId;
+    swapPicker.setValue(item.assetId);
     const assetDefault = getMeshes()[itemIndex]?.userData.layout.entry;
     const inheritedBlend = assetDefault?.blendMode;
     const inheritedOpacity = assetDefault?.opacity;
@@ -736,7 +1129,7 @@ export function initAssetLayoutTuner({
 
     saveBtn.disabled = true;
     try {
-      const res = await fetch("/__outland/save-beat-layout", {
+      const res = await fetch(new URL("/__outland/save-beat-layout", window.location.origin), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -780,6 +1173,24 @@ export function initAssetLayoutTuner({
     }
   };
 
+  const closeAssetPickers = () => {
+    swapPicker.close();
+    addPicker.close();
+  };
+
+  const onPickerPointerDown = (event) => {
+    if (swapPicker.contains(event.target) || addPicker.contains(event.target)) return;
+    closeAssetPickers();
+  };
+
+  const bindPickerHost = (host) => {
+    host?.addEventListener("pointerdown", onPickerPointerDown, true);
+  };
+
+  const unbindPickerHost = (host) => {
+    host?.removeEventListener("pointerdown", onPickerPointerDown, true);
+  };
+
   let popOutWindow = null;
 
   const getPanelWindow = () => panel.ownerDocument?.defaultView || window;
@@ -802,6 +1213,10 @@ export function initAssetLayoutTuner({
   };
 
   const dockPanel = () => {
+    if (popOutWindow && !popOutWindow.closed) {
+      popOutWindow.removeEventListener("keydown", onPreviewKeyDown);
+      unbindPickerHost(popOutWindow);
+    }
     if (panel.isConnected && panel.ownerDocument === document) return;
     document.body.appendChild(panel);
     if (!document.head.contains(style)) {
@@ -851,6 +1266,8 @@ export function initAssetLayoutTuner({
     panel.style.right = "auto";
     popOutBtn.textContent = "Dock";
     popOutBtn.title = "Return controls to the preview window";
+    next.addEventListener("keydown", onPreviewKeyDown);
+    bindPickerHost(next);
 
     next.addEventListener("beforeunload", () => {
       // Defer so the unload can finish before we move nodes back.
@@ -984,7 +1401,7 @@ export function initAssetLayoutTuner({
 
   const onPanelPointerDown = (event) => {
     if (event.button !== 0) return;
-    if (event.target.closest("button, select, input, label")) return;
+    if (event.target.closest("button, select, input, label, .asset-picker")) return;
     if (panel.classList.contains("is-minimized") && !event.target.closest(".asset-layout-tuner__drag-handle")) {
       return;
     }
@@ -1030,6 +1447,10 @@ export function initAssetLayoutTuner({
     const tag = event.target?.tagName;
     const inField = tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA";
 
+    if (event.key === "Escape") {
+      closeAssetPickers();
+    }
+
     if (mod && event.key.toLowerCase() === "s") {
       event.preventDefault();
       void performSave();
@@ -1051,6 +1472,7 @@ export function initAssetLayoutTuner({
   };
 
   window.addEventListener("keydown", onPreviewKeyDown);
+  bindPickerHost(window);
 
   beatSelect.addEventListener("change", () => {
     beatIndex = Number(beatSelect.value);
@@ -1062,19 +1484,14 @@ export function initAssetLayoutTuner({
     applyViewportMode();
   });
 
-  assetSelect.addEventListener("change", () => {
-    selectAsset(Number(assetSelect.value));
-  });
-
-  swapSelect.addEventListener("change", async () => {
-    const assetId = swapSelect.value;
+  swapPicker.onChange(async (assetId) => {
     if (!assetId || assetId === getItem()?.assetId) return;
     pushUndo();
     const ok = await beatAssets.swapLayoutItemAsset(beatIndex, itemIndex, assetId);
     if (!ok) {
       undoStack.pop();
       syncUndoButton();
-      swapSelect.value = getItem()?.assetId ?? assetId;
+      swapPicker.setValue(getItem()?.assetId ?? assetId);
       return;
     }
     refreshAssetOptions();
@@ -1082,7 +1499,7 @@ export function initAssetLayoutTuner({
   });
 
   addBtn.addEventListener("click", async () => {
-    const assetId = addSelect.value;
+    const assetId = addPicker.value;
     if (!assetId) return;
     pushUndo();
     const ok = await beatAssets.addLayoutItem(beatIndex, assetId);
@@ -1304,6 +1721,11 @@ export function initAssetLayoutTuner({
       dragSyncRaf = null;
     }
     window.removeEventListener("keydown", onPreviewKeyDown);
+    unbindPickerHost(window);
+    if (popOutWindow && !popOutWindow.closed) {
+      popOutWindow.removeEventListener("keydown", onPreviewKeyDown);
+      unbindPickerHost(popOutWindow);
+    }
     header.removeEventListener("pointerdown", onPanelPointerDown);
     header.removeEventListener("pointermove", onPanelPointerMove);
     header.removeEventListener("pointerup", onPanelPointerUp);
