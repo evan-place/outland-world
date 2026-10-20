@@ -621,22 +621,29 @@ body.rail-open {
   width: auto;
   height: 40px;
   box-sizing: border-box;
-  font-family: var(--font-mono);
+  font-family: var(--font-screen);
   font-size: 16px;
   line-height: 1;
   letter-spacing: 0.01em;
   text-transform: uppercase;
   white-space: nowrap;
-  color: var(--color-fg);
-  background: var(--color-bg);
-  border: var(--ui-stroke) solid var(--color-fg);
+  color: #e9e8e4;
+  background: #1d1c1a;
+  border: none;
   border-radius: 200px;
-  padding: 0 16px;
+  /* 40× hug, 16px sides — Figma 6996:668. Extra top pad optically centers Screen caps. */
+  padding: 3px 16px 0;
   cursor: pointer;
+  text-box-trim: trim-both;
+  text-box-edge: cap alphabetic;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
 }
 
 .cta-pill:hover {
-  opacity: 0.85;
+  background: #d9d7cd;
+  color: #1d1c1a;
 }
 
 .cta-pill:focus-visible {

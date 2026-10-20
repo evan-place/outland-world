@@ -1,6 +1,6 @@
 import { playUiOpen, playUiClose } from "../audio/ui-beep.js";
 
-const US_TZ = "America/New_York";
+const US_TZ = "America/Chicago";
 const WALES_TZ = "Europe/London";
 const MOBILE_RAIL_MS = 450;
 
@@ -17,7 +17,7 @@ function formatClock(date, timeZone) {
 function updateClocks(usEl, walesEl) {
   if (!usEl || !walesEl) return;
   const now = new Date();
-  usEl.textContent = `${formatClock(now, US_TZ)} United States`;
+  usEl.textContent = `${formatClock(now, US_TZ)} Minnesota`;
   walesEl.textContent = `${formatClock(now, WALES_TZ)} Wales`;
 }
 
