@@ -32,6 +32,8 @@ export function initStoryScroll({ beats, onBeatChange, getAssetSettleDelayMs, on
   let transitionTargetBeat = 0;
   let lastTransitionT = 0;
   let transitionGoingForward = true;
+  /** When true (asset layout tuner open), freeze auto-play + scroll advances. */
+  let playbackPaused = false;
 
   const computeTimelineTotal = () => {
     if (beatCount <= 1) return timing.introDwell + timing.beatDwellLast;
@@ -168,6 +170,7 @@ export function initStoryScroll({ beats, onBeatChange, getAssetSettleDelayMs, on
     }
 
     if (
+      !playbackPaused &&
       AUTO_PLAY.enabled &&
       !reduced &&
       phase === "settled" &&
@@ -215,9 +218,35 @@ export function initStoryScroll({ beats, onBeatChange, getAssetSettleDelayMs, on
   const scheduleAutoAdvance = () => {
     clearAutoTimer();
     dwellStartedAt = performance.now();
+    if (playbackPaused) return;
     if (!AUTO_PLAY.enabled || reduced) return;
     if (currentBeat >= beatCount - 1) return;
     if (!progressRaf) tickPlayback();
+  };
+
+  const pausePlayback = () => {
+    playbackPaused = true;
+    clearAutoTimer();
+    transitionTween?.kill();
+    transitionTween = null;
+    phase = "settled";
+    wheelAccum = 0;
+    nextStepAllowedAt = Number.POSITIVE_INFINITY;
+    // Freeze progress bar + keep current beat settled for the tuner.
+    if (progressRaf != null) {
+      cancelAnimationFrame(progressRaf);
+      progressRaf = null;
+    }
+  };
+
+  const resumePlayback = () => {
+    if (!playbackPaused) return;
+    playbackPaused = false;
+    nextStepAllowedAt = performance.now();
+    scheduleAutoAdvance();
+    if (playbackStart != null && !progressRaf && shouldKeepPlaybackLoop()) {
+      tickPlayback();
+    }
   };
 
   const applyState = (from, t, linearP) => {
@@ -313,6 +342,7 @@ export function initStoryScroll({ beats, onBeatChange, getAssetSettleDelayMs, on
   };
 
   const returnToStart = ({ force = false } = {}) => {
+    if (playbackPaused) return false;
     if (currentBeat <= 0 && phase === "settled") return false;
 
     if (!force && phase === "settled" && !canAcceptStep(-1)) {
@@ -355,6 +385,8 @@ export function initStoryScroll({ beats, onBeatChange, getAssetSettleDelayMs, on
   };
 
   const beginTransition = (direction, { force = false } = {}) => {
+    if (playbackPaused) return false;
+
     if (direction < 0) {
       if (phase === "transitioning") {
         return interruptTransition(direction);
@@ -481,19 +513,25 @@ export function initStoryScroll({ beats, onBeatChange, getAssetSettleDelayMs, on
 
   return {
     getCurrentBeat: () => currentBeat,
+    isPlaybackPaused: () => playbackPaused,
+    pausePlayback,
+    resumePlayback,
     jumpToBeat: (index) => {
       const beat = Math.max(0, Math.min(beatCount - 1, index));
-      if (beat === currentBeat && phase === "settled") return;
       transitionTween?.kill();
       transitionTween = null;
       wheelAccum = 0;
       transitionDirection = 1;
       clearAutoTimer();
       syncTimelineElapsed(timelineMsForBeat(beat));
+      // Always re-apply settled state so story text matches the tuner beat
+      // even when auto-play had drifted or we're already on this index.
       settleAt(beat);
-      armNextStep(1);
+      if (!playbackPaused) armNextStep(1);
+      else nextStepAllowedAt = Number.POSITIVE_INFINITY;
     },
     goToBeat: (index) => {
+      if (playbackPaused) return;
       if (index === currentBeat) return;
       if (index <= 0) {
         returnToStart();

@@ -6,11 +6,11 @@
     <meta name="description" content="Outland is a future-focused experimental creative company operating at the intersection of imagination, design, and emerging technology. We build narrative-driven brand worlds through identity systems, digital experiences, and storytelling." />
     <meta name="theme-color" content="#fcfcf5" />
     <script>
+      document.documentElement.dataset.theme = "light";
       try {
-        document.documentElement.dataset.theme =
-          localStorage.getItem("outland-theme") === "dark" ? "dark" : "light";
+        localStorage.removeItem("outland-theme");
       } catch {
-        document.documentElement.dataset.theme = "light";
+        /* ignore */
       }
     </script>
     <link rel="canonical" href="https://enteroutland.com/" />
@@ -266,19 +266,6 @@
           </div>
         </div>
       </aside>
-
-      <button
-        type="button"
-        id="theme-toggle"
-        class="theme-toggle"
-        role="switch"
-        aria-checked="false"
-        aria-label="Switch to dark theme"
-      >
-        <span class="theme-toggle__track" aria-hidden="true">
-          <span class="theme-toggle__thumb"></span>
-        </span>
-      </button>
 
       <footer class="chrome-cta">
         <button type="button" id="contact-open" class="cta-pill">Let's Imagine</button>

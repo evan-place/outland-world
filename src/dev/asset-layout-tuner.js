@@ -20,8 +20,8 @@ function normalizeBlendMode(mode) {
 }
 
 const SLIDERS = [
-  { key: "anchorX", label: "Anchor X", min: 0, max: 1, step: 0.005, itemKey: "anchor", axis: "x" },
-  { key: "anchorY", label: "Anchor Y", min: 0, max: 1, step: 0.005, itemKey: "anchor", axis: "y" },
+  { key: "anchorX", label: "Anchor X", min: -0.75, max: 1.75, step: 0.005, itemKey: "anchor", axis: "x" },
+  { key: "anchorY", label: "Anchor Y", min: -0.75, max: 1.75, step: 0.005, itemKey: "anchor", axis: "y" },
   { key: "rotation", label: "Rotation", min: -180, max: 180, step: 0.5 },
   { key: "scale", label: "Scale", min: 0.2, max: 6, step: 0.01 },
   { key: "z", label: "Z depth", min: -3, max: 3, step: 0.1 },
@@ -52,13 +52,8 @@ export function initAssetLayoutTuner({
 }) {
   if (!beatAssets) return null;
 
+  // Default to beat 0 (first field layout) so placement starts on the hero frame.
   let beatIndex = 0;
-  for (let i = 0; i < beats.length; i++) {
-    if (beatAssets.getLayoutIdForBeat(i) === "field-experiences") {
-      beatIndex = i;
-      break;
-    }
-  }
   let itemIndex = 0;
   let dragEnabled = true;
   let dragging = null;
@@ -171,24 +166,36 @@ export function initAssetLayoutTuner({
   swapRow.className = "asset-layout-tuner__field";
   const swapLabel = document.createElement("span");
   swapLabel.className = "asset-layout-tuner__label";
-  swapLabel.textContent = "Asset file";
+  swapLabel.textContent = "Replace with";
+  swapLabel.title = "Swap the selected layer’s file";
   const swapSelect = document.createElement("select");
   swapSelect.className = "asset-layout-tuner__select";
+  swapSelect.title = "Replace the selected layer with a different asset file";
   swapRow.append(swapLabel, swapSelect);
 
+  const addRow = document.createElement("div");
+  addRow.className = "asset-layout-tuner__field";
+  const addLabel = document.createElement("span");
+  addLabel.className = "asset-layout-tuner__label";
+  addLabel.textContent = "Add layer";
+  addLabel.title = "Pick a file, then Add it as a new layer";
   const addSelect = document.createElement("select");
   addSelect.className = "asset-layout-tuner__select";
+  addSelect.title = "Choose an asset to add as a new layer";
   const addBtn = document.createElement("button");
   addBtn.type = "button";
   addBtn.className = "asset-layout-tuner__btn";
   addBtn.textContent = "Add";
+  addBtn.title = "Add the selected file as a new layer";
 
   const removeBtn = document.createElement("button");
   removeBtn.type = "button";
   removeBtn.className = "asset-layout-tuner__btn";
   removeBtn.textContent = "Remove";
+  removeBtn.title = "Remove the selected layer";
 
   assetActions.append(addSelect, addBtn, removeBtn);
+  addRow.append(addLabel, assetActions);
 
   const blendRow = document.createElement("label");
   blendRow.className = "asset-layout-tuner__field";
@@ -211,7 +218,9 @@ export function initAssetLayoutTuner({
   safeZoneCheck.type = "checkbox";
   safeZoneCheck.checked = true;
   const safeZoneText = document.createElement("span");
-  safeZoneText.textContent = "Ignore safe-zone nudge";
+  safeZoneText.textContent = "Ignore center text push";
+  safeZoneText.title =
+    "When off, assets overlapping the story text area get nudged outward. Does not limit edge overflow.";
   safeZoneRow.append(safeZoneCheck, safeZoneText);
 
   const viewportRow = document.createElement("label");
@@ -271,7 +280,7 @@ export function initAssetLayoutTuner({
     layoutMeta,
     assetRow,
     swapRow,
-    assetActions,
+    addRow,
     blendRow,
     safeZoneRow,
     dragRow
@@ -545,17 +554,30 @@ export function initAssetLayoutTuner({
   `;
   document.head.appendChild(style);
 
-  const manifestAssetIds =
+  const manifestEntries =
     assets.length > 0
-      ? assets.filter((entry) => entry.enabled !== false).map((entry) => entry.id)
-      : beatAssets.getManifestAssetIds();
+      ? assets.filter((entry) => entry.enabled !== false)
+      : (beatAssets.manifest?.assets || []).filter((entry) => entry.enabled !== false);
+
+  const extFromSrc = (src) => {
+    const match = String(src || "").match(/\.([a-z0-9]+)(?:\?|#|$)/i);
+    return match ? match[1].toLowerCase() : "";
+  };
+
+  const labelForAsset = (assetId, srcHint) => {
+    const entry = manifestEntries.find((item) => item.id === assetId);
+    const ext = extFromSrc(srcHint || entry?.src);
+    return ext ? `${assetId}.${ext}` : assetId;
+  };
+
+  const manifestAssetIds = manifestEntries.map((entry) => entry.id);
 
   const populateManifestSelect = (select, selectedId) => {
     select.replaceChildren();
-    for (const assetId of manifestAssetIds) {
+    for (const entry of manifestEntries) {
       const option = document.createElement("option");
-      option.value = assetId;
-      option.textContent = assetId;
+      option.value = entry.id;
+      option.textContent = labelForAsset(entry.id, entry.src);
       select.append(option);
     }
     if (selectedId) select.value = selectedId;
@@ -573,7 +595,9 @@ export function initAssetLayoutTuner({
     meshes.forEach((mesh, index) => {
       const option = document.createElement("option");
       option.value = String(index);
-      option.textContent = mesh.userData.layout.item.assetId;
+      const assetId = mesh.userData.layout.item.assetId;
+      const src = mesh.userData.layout.entry?.src;
+      option.textContent = labelForAsset(assetId, src);
       assetSelect.append(option);
     });
     itemIndex = Math.min(itemIndex, Math.max(0, meshes.length - 1));
@@ -621,8 +645,8 @@ export function initAssetLayoutTuner({
     storyText?.showSettled?.(beatIndex);
     const layoutId = beatAssets.getLayoutIdForBeat(beatIndex);
     layoutMeta.textContent = beatAssets.isMobile
-      ? `Layout: ${layoutId} · mobile`
-      : `Layout: ${layoutId} · desktop`;
+      ? `Beat ${beatIndex + 1} · ${layoutId} · mobile`
+      : `Beat ${beatIndex + 1} · ${layoutId} · desktop`;
     refreshAssetOptions();
     selectAsset(itemIndex);
   };
@@ -704,8 +728,8 @@ export function initAssetLayoutTuner({
 
     const layoutId = beatAssets.getLayoutIdForBeat(beatIndex);
     layoutMeta.textContent = beatAssets.isMobile
-      ? `Layout: ${layoutId} · mobile`
-      : `Layout: ${layoutId} · desktop`;
+      ? `Beat ${beatIndex + 1} · ${layoutId} · mobile`
+      : `Beat ${beatIndex + 1} · ${layoutId} · desktop`;
 
     itemIndex = Math.max(0, Math.min(entry.itemIndex, getMeshes().length - 1));
     refreshAssetOptions();
@@ -749,8 +773,10 @@ export function initAssetLayoutTuner({
       beatAssets.applyLayoutItems(beatIndex, items);
       beatAssets.commitLayoutSnapshot(beatIndex);
       syncSlidersFromItem();
-      flashButton(saveBtn, "Saved");
-      console.info("[asset-layout-tuner] saved", layoutId, {
+      flashButton(saveBtn, `Saved b${beatIndex + 1}`);
+      console.info("[asset-layout-tuner] saved", {
+        beat: beatIndex + 1,
+        layoutId,
         count: items.length,
         mobile: beatAssets.isMobile,
         blendModes: items.map((item) => item.blendMode),
@@ -1117,6 +1143,11 @@ export function initAssetLayoutTuner({
 
   safeZoneCheck.addEventListener("change", () => {
     beatAssets.setLayoutTuningOptions({ skipSafeZoneNudge: safeZoneCheck.checked });
+    // Nudge is applied in resolveHome — rebuild so the toggle is visible immediately.
+    beatAssets.rebuildBeatMeshes(beatIndex);
+    beatAssets.freezeForTuning(beatIndex);
+    refreshAssetOptions();
+    selectAsset(itemIndex);
   });
 
   undoBtn.addEventListener("click", () => {
@@ -1292,6 +1323,8 @@ export function initAssetLayoutTuner({
 
   beatSelect.value = String(beatIndex);
   restorePanelState();
+  // Freeze story auto-play / scroll so text stays locked to the selected beat.
+  storyScroll?.pausePlayback?.();
   window.setTimeout(applyViewportMode, 600);
 
   const destroyTuner = () => {
@@ -1325,6 +1358,7 @@ export function initAssetLayoutTuner({
     panel.remove();
     style.remove();
     beatAssets.endLayoutTuning();
+    storyScroll?.resumePlayback?.();
   };
 
   return {

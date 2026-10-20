@@ -71,6 +71,16 @@ function outlandSaveBeatLayoutPlugin() {
           // so Save never triggers a full-page HMR reload that wipes the tuner.
           await fs.writeFile(filePath, `${JSON.stringify(current, null, 2)}\n`, "utf8");
 
+          // Drop the cached JSON module so the next full page load reads disk.
+          // Do not call reloadModule/ws.send — that would reset the open tuner.
+          const normalized = filePath.replace(/\\/g, "/");
+          for (const mod of server.moduleGraph.idToModuleMap.values()) {
+            if (!mod?.file) continue;
+            if (mod.file.replace(/\\/g, "/") === normalized) {
+              server.moduleGraph.invalidateModule(mod);
+            }
+          }
+
           res.setHeader("Content-Type", "application/json");
           res.end(JSON.stringify({ ok: true, id: layoutId }));
         } catch (err) {

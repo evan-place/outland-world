@@ -476,11 +476,13 @@ export class BeatAssets {
   }
 
   worldToAnchor(x, y) {
-    // Inverse of anchorToWorld: world ∈ [-span, span] ↔ anchor ∈ [0, 1]
+    // Inverse of anchorToWorld. Allow values outside 0–1 so assets can
+    // hang past the viewport edge while authoring (Figma often crops them).
     const { xSpan, ySpan } = getAnchorSpans(this.camera.aspect);
+    const clampExt = (t) => Math.max(-0.75, Math.min(1.75, t));
     return {
-      x: clamp01(x / (2 * xSpan) + 0.5),
-      y: clamp01(-y / (2 * ySpan) + 0.5),
+      x: clampExt(x / (2 * xSpan) + 0.5),
+      y: clampExt(-y / (2 * ySpan) + 0.5),
     };
   }
 

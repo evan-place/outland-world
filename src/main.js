@@ -4,7 +4,6 @@ import storyData from "./data/story.json";
 import { initAmbientAudio } from "./audio/ambient-audio.js";
 import { initRail } from "./chrome/rail.js";
 import { initSelectionFx } from "./chrome/selection-fx.js";
-import { initThemeToggle } from "./chrome/theme-toggle.js";
 import { BeatAssets } from "./scene/beat-assets.js";
 import { StoryText } from "./scene/story-text.js";
 import { initStoryScroll } from "./scroll/story-scroll.js";
@@ -22,7 +21,7 @@ function main() {
   initAmbientAudio();
   initRail();
   initSelectionFx();
-  initThemeToggle();
+  document.documentElement.dataset.theme = "light";
 
   const contactOpen = document.getElementById("contact-open");
   let contactModal = null;
@@ -66,24 +65,6 @@ function main() {
   window.addEventListener("outland:themechange", () => {
     void storyText.resize();
   });
-
-  // Asset layout tuner — hidden gate (right-click logo). Remove before public launch.
-  import("./dev/asset-layout-tuner-gate.js").then(({ mountAssetLayoutTunerGate }) => {
-    mountAssetLayoutTunerGate({
-      beatAssets,
-      storyText,
-      storyScroll,
-      beats,
-      assets: assetsManifest.assets,
-    });
-  });
-
-  // Dev lens tuner — re-enable when tuning shader params.
-  // if (import.meta.env.DEV) {
-  //   import("./dev/lens-tuner.js").then(({ initLensTuner }) => {
-  //     initLensTuner({ storyText });
-  //   });
-  // }
 
   document.body.focus({ preventScroll: true });
 
