@@ -34,6 +34,8 @@ export function initAboutModal() {
 
   let lastFocused = null;
   let clockTimer = null;
+  let closeTimer = null;
+  let onCloseTransitionEnd = null;
   let open = false;
 
   const focusables = () =>
@@ -55,11 +57,31 @@ export function initAboutModal() {
     }
   };
 
+  const clearCloseHandlers = () => {
+    if (closeTimer != null) {
+      window.clearTimeout(closeTimer);
+      closeTimer = null;
+    }
+    if (onCloseTransitionEnd) {
+      modal.removeEventListener("transitionend", onCloseTransitionEnd);
+      onCloseTransitionEnd = null;
+    }
+  };
+
+  const finishClose = () => {
+    // Bail if the modal was reopened before the fade-out finished.
+    if (open) return;
+    clearCloseHandlers();
+    modal.hidden = true;
+    lastFocused?.focus?.();
+  };
+
   const setOpen = (nextOpen) => {
     if (nextOpen === open) return;
     open = nextOpen;
 
     if (open) {
+      clearCloseHandlers();
       lastFocused = document.activeElement;
       modal.hidden = false;
       modal.setAttribute("aria-hidden", "false");
@@ -80,19 +102,13 @@ export function initAboutModal() {
     document.body.classList.remove("about-modal-open");
     stopClocks();
 
-    const onEnd = (event) => {
-      if (event.propertyName !== "opacity") return;
-      modal.removeEventListener("transitionend", onEnd);
-      modal.hidden = true;
-      lastFocused?.focus?.();
+    onCloseTransitionEnd = (event) => {
+      if (event.target !== modal || event.propertyName !== "opacity") return;
+      finishClose();
     };
 
-    modal.addEventListener("transitionend", onEnd);
-    window.setTimeout(() => {
-      if (modal.hidden) return;
-      modal.hidden = true;
-      lastFocused?.focus?.();
-    }, 320);
+    modal.addEventListener("transitionend", onCloseTransitionEnd);
+    closeTimer = window.setTimeout(finishClose, 320);
   };
 
   openBtn.addEventListener("click", () => {
