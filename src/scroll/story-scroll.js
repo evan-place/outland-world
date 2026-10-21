@@ -415,6 +415,7 @@ export function initStoryScroll({ beats, onBeatChange, getAssetSettleDelayMs, on
 
   const shouldIgnoreScrollInput = (target) => {
     if (document.body.classList.contains("contact-modal-open")) return true;
+    if (document.body.classList.contains("about-modal-open")) return true;
     if (!(target instanceof Element)) return false;
     const tag = target.tagName;
     if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;

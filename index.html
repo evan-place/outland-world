@@ -72,8 +72,9 @@
     <link rel="stylesheet" href="/src/styles/chrome.css" />
     <link rel="stylesheet" href="/src/styles/main.css" />
     <link rel="stylesheet" href="/src/styles/story-text.css" />
-    <link rel="stylesheet" href="/src/styles/contact-modal.css" />
+    <link rel="stylesheet" href="/src/styles/about-modal.css" />
     <link rel="stylesheet" href="/src/styles/selection-fx.css" />
+    <link rel="stylesheet" href="/src/styles/contact-modal.css" />
     <link rel="stylesheet" href="/src/styles/layout-tuner-preview.css" />
   </head>
   <body tabindex="-1">
@@ -160,115 +161,41 @@
         </a>
       </header>
 
-      <aside class="chrome-rail" id="chrome-rail" aria-label="About Outland" aria-expanded="false">
-        <div class="rail-shell">
-          <button
-            type="button"
-            class="rail-toggle"
-            data-rail-toggle
-            aria-expanded="false"
-            aria-controls="rail-panel"
-            aria-label="About Outland"
-          >
-            <span class="rail-toggle__icons" aria-hidden="true">
-              <svg class="rail-toggle__icon rail-toggle__icon--closed" viewBox="0 0 22.1543 24.7134" fill="none" focusable="false">
-                <path
-                  d="M22.1543 20.9488L11.0771 20.9488V20.9488L0 20.9488V4.78472L11.0762 4.78472L22.1543 4.78472V20.9488Z"
-                  fill="var(--color-bg)"
-                  stroke="currentColor"
-                  stroke-linejoin="round"
-                />
-                <path d="M11.0772 4.78V20.95" stroke="currentColor" />
-              </svg>
-              <svg class="rail-toggle__icon rail-toggle__icon--open" viewBox="0 0 22.1543 24.7134" fill="none" focusable="false">
-                <path d="M11.0802 0V5.0431" stroke="currentColor" transform="translate(4.9265 -3.93355) rotate(25.7143)" />
-                <path d="M11.0802 0V5.0431" stroke="currentColor" transform="translate(11.0718 -5.34002) rotate(51.4286)" />
-                <path d="M11.0802 0V5.0431" stroke="currentColor" transform="translate(17.2188 -3.94086) rotate(77.1429)" />
-                <path d="M11.0802 0V5.0431" stroke="currentColor" transform="translate(22.15 -0.0131773) rotate(102.857)" />
-                <path d="M11.0802 0V5.0431" stroke="currentColor" transform="translate(24.8887 5.6651) rotate(128.571)" />
-                <path d="M11.0802 0V5.0431" stroke="currentColor" transform="translate(24.8924 11.9693) rotate(154.286)" />
-                <path d="M11.0802 0V5.0431" stroke="currentColor" transform="translate(22.1605 17.6508) rotate(-180)" />
-                <path d="M11.0802 0V5.0431" stroke="currentColor" transform="translate(17.234 21.5844) rotate(-154.286)" />
-                <path d="M11.0802 0V5.0431" stroke="currentColor" transform="translate(11.0887 22.9909) rotate(-128.571)" />
-                <path d="M11.0802 0V5.0431" stroke="currentColor" transform="translate(4.94168 21.5917) rotate(-102.857)" />
-                <path d="M11.0802 0V5.0431" stroke="currentColor" transform="translate(0.0105077 17.664) rotate(-77.1429)" />
-                <path d="M11.0802 0V5.0431" stroke="currentColor" transform="translate(-2.72817 11.9857) rotate(-51.4286)" />
-                <path d="M11.0802 0V5.0431" stroke="currentColor" transform="translate(-2.73192 5.68153) rotate(-25.7143)" />
-                <path
-                  d="M22.1543 20.9488L11.0771 24.7125V24.7134L0 20.9488L0 4.78472L11.0762 8.54839L22.1543 4.78472V20.9488Z"
-                  fill="var(--color-bg)"
-                  stroke="currentColor"
-                  stroke-linejoin="round"
-                />
-                <path d="M11.0772 0V24.4632" stroke="currentColor" />
-              </svg>
-            </span>
-          </button>
-
-          <div class="rail-panel" id="rail-panel" hidden>
-            <div class="rail-panel__scroll">
-              <header class="rail-clocks">
-                <p id="rail-clock-us" class="rail-clock"></p>
-                <p id="rail-clock-wales" class="rail-clock"></p>
-              </header>
-
-              <div class="rail-panel__body">
-                <div class="rail-story">
-                  <p class="rail-story__title" data-select-fx>Creators of <em>tomorrow</em></p>
-                  <p class="rail-story__body" data-select-fx>
-                    Outland is a future-focused experimental creative company operating at the intersection of imagination, design and emerging technology. We collaborate with visionary founders and ambitious teams to build narrative-driven brand worlds through identity systems, digital experiences and storytelling. Using exploratory design, emerging technologies and AI, we expand ideas into immersive brand worlds grounded in strategy and narrative.
-                  </p>
-                </div>
-
-                <div class="rail-team">
-                  <figure class="rail-team__photo rail-team__photo--evan">
-                    <img src="/assets/rail/evan.jpg" alt="Evan Place" width="209" height="293" />
-                  </figure>
-                  <figure class="rail-team__photo rail-team__photo--jordan">
-                    <img src="/assets/rail/jordan.jpg" alt="Jordan Jenkins" width="209" height="293" />
-                  </figure>
-                </div>
-
-                <footer class="rail-footer">
-                  <p class="rail-footer__copy">©EnterOutland2026</p>
-                  <nav class="rail-social" aria-label="Social links">
-                    <a
-                      class="rail-social__link"
-                      href="https://x.com/EnterOutland"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label="Outland on X"
-                    >
-                      <img src="/assets/social/x.svg" alt="" width="18" height="17" />
-                    </a>
-                    <a
-                      class="rail-social__link"
-                      href="https://www.linkedin.com/company/enteroutland/?viewAsMember=true"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label="Outland on LinkedIn"
-                    >
-                      <img src="/assets/social/linkedin.svg" alt="" width="18" height="18" />
-                    </a>
-                    <a
-                      class="rail-social__link"
-                      href="https://www.instagram.com/enteroutland"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label="Outland on Instagram"
-                    >
-                      <img src="/assets/social/instagram.svg" alt="" width="20" height="20" />
-                    </a>
-                  </nav>
-                </footer>
-              </div>
-            </div>
-          </div>
-        </div>
-      </aside>
-
       <footer class="chrome-cta">
         <button type="button" id="contact-open" class="cta-pill">Let's Build</button>
+        <button
+          type="button"
+          id="about-open"
+          class="chrome-about"
+          aria-expanded="false"
+          aria-controls="about-modal"
+          aria-label="About Outland"
+        >
+          <span class="chrome-about__ring" aria-hidden="true">
+            <svg class="chrome-about__icon" viewBox="0 0 22.1543 24.7134" fill="none" focusable="false">
+              <path d="M11.0802 0V5.0431" stroke="currentColor" transform="translate(4.9265 -3.93355) rotate(25.7143)" />
+              <path d="M11.0802 0V5.0431" stroke="currentColor" transform="translate(11.0718 -5.34002) rotate(51.4286)" />
+              <path d="M11.0802 0V5.0431" stroke="currentColor" transform="translate(17.2188 -3.94086) rotate(77.1429)" />
+              <path d="M11.0802 0V5.0431" stroke="currentColor" transform="translate(22.15 -0.0131773) rotate(102.857)" />
+              <path d="M11.0802 0V5.0431" stroke="currentColor" transform="translate(24.8887 5.6651) rotate(128.571)" />
+              <path d="M11.0802 0V5.0431" stroke="currentColor" transform="translate(24.8924 11.9693) rotate(154.286)" />
+              <path d="M11.0802 0V5.0431" stroke="currentColor" transform="translate(22.1605 17.6508) rotate(-180)" />
+              <path d="M11.0802 0V5.0431" stroke="currentColor" transform="translate(17.234 21.5844) rotate(-154.286)" />
+              <path d="M11.0802 0V5.0431" stroke="currentColor" transform="translate(11.0887 22.9909) rotate(-128.571)" />
+              <path d="M11.0802 0V5.0431" stroke="currentColor" transform="translate(4.94168 21.5917) rotate(-102.857)" />
+              <path d="M11.0802 0V5.0431" stroke="currentColor" transform="translate(0.0105077 17.664) rotate(-77.1429)" />
+              <path d="M11.0802 0V5.0431" stroke="currentColor" transform="translate(-2.72817 11.9857) rotate(-51.4286)" />
+              <path d="M11.0802 0V5.0431" stroke="currentColor" transform="translate(-2.73192 5.68153) rotate(-25.7143)" />
+              <path
+                d="M22.1543 20.9488L11.0771 24.7125V24.7134L0 20.9488L0 4.78472L11.0762 8.54839L22.1543 4.78472V20.9488Z"
+                fill="var(--color-bg)"
+                stroke="currentColor"
+                stroke-linejoin="round"
+              />
+              <path d="M11.0772 0V24.4632" stroke="currentColor" />
+            </svg>
+          </span>
+        </button>
         <button
           type="button"
           id="audio-toggle"
@@ -278,7 +205,96 @@
         ></button>
       </footer>
 
+      <div id="about-modal" class="about-modal" hidden aria-hidden="true">
+        <button type="button" class="about-modal__backdrop" data-about-close aria-label="Close"></button>
+        <div
+          class="about-modal__dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="about-title"
+        >
+          <button type="button" class="about-modal__close" data-about-close aria-label="Close">
+            &times;
+          </button>
+
+          <div class="about-modal__scroll">
+            <header class="about-modal__clocks">
+              <p id="about-clock-us" class="about-modal__clock"></p>
+              <p id="about-clock-wales" class="about-modal__clock"></p>
+            </header>
+
+            <div class="about-modal__story">
+              <p id="about-title" class="about-modal__title" data-select-fx>Creators of <em>tomorrow</em></p>
+              <p class="about-modal__body" data-select-fx>
+                Outland is a future-focused experimental creative company operating at the intersection of imagination, design and emerging technology. We collaborate with visionary founders and ambitious teams to build narrative-driven brand worlds through identity systems, digital experiences and storytelling. Using exploratory design, emerging technologies and AI, we expand ideas into immersive brand worlds grounded in strategy and narrative.
+              </p>
+            </div>
+
+            <div class="about-modal__team">
+              <figure class="about-modal__photo">
+                <img src="/assets/rail/evan.jpg" alt="Evan Place" width="209" height="293" />
+              </figure>
+              <figure class="about-modal__photo">
+                <img src="/assets/rail/jordan.jpg" alt="Jordan Jenkins" width="209" height="293" />
+              </figure>
+            </div>
+
+            <footer class="about-modal__footer">
+              <p class="about-modal__copy">©EnterOutland2026</p>
+              <nav class="about-modal__social" aria-label="Social links">
+                <a
+                  class="about-modal__social-link"
+                  href="https://x.com/EnterOutland"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Outland on X"
+                >
+                  <img src="/assets/social/x.svg" alt="" width="18" height="17" />
+                </a>
+                <a
+                  class="about-modal__social-link"
+                  href="https://www.linkedin.com/company/enteroutland/?viewAsMember=true"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Outland on LinkedIn"
+                >
+                  <img src="/assets/social/linkedin.svg" alt="" width="18" height="18" />
+                </a>
+                <a
+                  class="about-modal__social-link"
+                  href="https://www.instagram.com/enteroutland"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Outland on Instagram"
+                >
+                  <img src="/assets/social/instagram.svg" alt="" width="20" height="20" />
+                </a>
+              </nav>
+            </footer>
+          </div>
+        </div>
+      </div>
+
       <div id="contact-modal" class="contact-modal" hidden aria-hidden="true">
+        <div class="contact-modal__scene" aria-hidden="true">
+          <div class="contact-modal__scene-fill"></div>
+          <div class="contact-modal__scene-layer contact-modal__scene-layer--texture">
+            <img src="/assets/contact/scene-base.png" alt="" width="1024" height="1024" decoding="async" />
+          </div>
+          <div class="contact-modal__scene-layer contact-modal__scene-layer--galaxy">
+            <img src="/assets/contact/scene-galaxy.png" alt="" width="720" height="360" decoding="async" />
+          </div>
+          <div class="contact-modal__scene-layer contact-modal__scene-layer--vector">
+            <img src="/assets/contact/scene-vector.png" alt="" width="1600" height="1354" decoding="async" />
+          </div>
+          <div class="contact-modal__scene-layer contact-modal__scene-layer--lands">
+            <img src="/assets/contact/scene-lands.jpg" alt="" width="1920" height="1080" decoding="async" />
+          </div>
+          <div class="contact-modal__scene-layer contact-modal__scene-layer--type">
+            <img src="/assets/contact/scene-type.svg" alt="" width="374" height="80" decoding="async" />
+          </div>
+          <div class="contact-modal__scene-layer contact-modal__scene-layer--stamp"></div>
+        </div>
         <button type="button" class="contact-modal__backdrop" data-contact-close aria-label="Close"></button>
         <div
           class="contact-modal__dialog"
@@ -335,8 +351,7 @@
 
               <p class="contact-modal__error" hidden></p>
 
-              <div class="contact-modal__actions">
-                <button type="submit" class="contact-modal__submit" disabled>Send</button>
+              <div class="contact-modal__footer">
                 <button
                   type="button"
                   class="contact-modal__direct"
@@ -363,6 +378,11 @@
                     </svg>
                   </span>
                 </button>
+
+                <div class="contact-modal__actions">
+                  <button type="submit" class="contact-modal__submit" disabled>Send</button>
+                  <button type="button" class="contact-modal__cancel" data-contact-close>Cancel</button>
+                </div>
               </div>
             </form>
           </div>

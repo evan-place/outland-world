@@ -111,8 +111,8 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   padding: 0;
   margin: 0;
   border: none;
@@ -128,8 +128,8 @@
 
 .chrome-audio__svg {
   display: block;
-  width: 43px;
-  height: 43px;
+  width: 40px;
+  height: 40px;
   overflow: visible;
 }
 
@@ -176,11 +176,8 @@
 }
 
 @media (min-width: 769px) {
-  /* Center in the content panel beside the collapsed rail.
-     Opening the rail overlays content — it does not reflow this center.
-     Avoid transform here so mix-blend-mode can sample the scene behind. */
   .chrome-logo {
-    left: calc((100vw + var(--rail-width-closed)) / 2);
+    left: 50%;
     transform: translateX(-50%);
   }
 }
@@ -598,9 +595,8 @@ body.rail-open {
 }
 
 @media (min-width: 769px) {
-  /* Must follow the base .chrome-cta rule so left/right aren't overwritten. */
   .chrome-cta {
-    left: var(--rail-width-closed);
+    left: 0;
     right: 0;
     width: auto;
     max-width: none;
@@ -627,23 +623,79 @@ body.rail-open {
   letter-spacing: 0.01em;
   text-transform: uppercase;
   white-space: nowrap;
-  color: #e9e8e4;
-  background: #1d1c1a;
-  border: none;
+  color: #1d1c1a;
+  background: transparent;
+  border: var(--ui-stroke) solid #1d1c1a;
   border-radius: 200px;
-  /* 40× hug, 16px sides — Figma 6996:668. Extra top pad optically centers Screen caps. */
+  /* Extra top pad optically centers Screen caps in the 40px pill. */
   padding: 3px 16px 0;
   cursor: pointer;
   text-box-trim: trim-both;
   text-box-edge: cap alphabetic;
   transition:
     background-color 0.2s ease,
-    color 0.2s ease;
+    color 0.2s ease,
+    opacity 0.2s ease;
 }
 
 .cta-pill:hover {
-  background: #d9d7cd;
+  opacity: 0.72;
+}
+
+.chrome-about {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-radius: 200px;
+  background: transparent;
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
   color: #1d1c1a;
+}
+
+.chrome-about__ring {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  box-sizing: border-box;
+  border: var(--ui-stroke) solid currentColor;
+  border-radius: 200px;
+  background: transparent;
+}
+
+.chrome-about__icon {
+  display: block;
+  width: 22px;
+  height: 25px;
+  overflow: visible;
+  color: inherit;
+}
+
+.chrome-about__icon path {
+  stroke: currentColor;
+  stroke-width: var(--icon-stroke);
+  vector-effect: non-scaling-stroke;
+}
+
+.chrome-about:focus-visible {
+  outline: var(--ui-stroke) solid var(--color-fg);
+  outline-offset: var(--focus-ring-offset);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .chrome-about:hover {
+    opacity: 0.72;
+  }
 }
 
 .cta-pill:focus-visible {
@@ -754,7 +806,8 @@ body.rail-open {
     pointer-events: none;
     transform: none;
     transition: none;
-    z-index: 12;
+    /* Above .chrome-cta (14) so the open drawer covers Let's Build + audio. */
+    z-index: 16;
   }
 
   /* Open/closing: stretch from top inset down to the persistent bottom rail. */
@@ -812,13 +865,13 @@ body.rail-open {
     position: relative;
     z-index: 1;
     flex: 1 1 auto;
-    width: auto;
+    width: 100%;
     min-width: 0;
     min-height: 0;
     height: auto;
-    margin: 0 var(--chrome-rail-inset);
-    border: var(--ui-stroke) solid var(--color-border);
-    border-bottom: none;
+    margin: 0;
+    border: none;
+    border-top: var(--ui-stroke) solid var(--color-border);
     background: var(--color-bg);
     overflow: hidden;
     pointer-events: none;
@@ -852,8 +905,7 @@ body.rail-open {
     overflow: hidden;
     -webkit-overflow-scrolling: touch;
     padding: 16px;
-    /* Clear the floating CTA + mute above the bottom rail. */
-    padding-bottom: calc(var(--chrome-cta-height) + 56px);
+    padding-bottom: 24px;
     box-sizing: border-box;
     scrollbar-width: none;
     -ms-overflow-style: none;
@@ -926,14 +978,20 @@ body.rail-open {
   }
 
   .chrome-audio {
-    width: 44px;
-    height: 44px;
+    width: 40px;
+    height: 40px;
     flex-shrink: 0;
   }
 
   .chrome-audio__svg {
-    width: 43px;
-    height: 43px;
+    width: 40px;
+    height: 40px;
+  }
+
+  .chrome-about {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
   }
 
   .cta-pill {

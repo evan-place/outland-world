@@ -3,6 +3,9 @@ import { refreshSelectionFx } from "../chrome/selection-fx.js";
 import { playCtaOpen, playCtaClose, playSuccessClick } from "../audio/ui-beep.js";
 
 const CTA_CLICK_RATE = 1;
+const SCENE_FADE_MS = 280;
+const DIALOG_DELAY_MS = 120;
+const DIALOG_FADE_MS = 220;
 
 const FOCUSABLE =
   'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
@@ -36,6 +39,20 @@ export function initContactModal() {
 
   let lastFocused = null;
   let copyResetTimer = null;
+  let dialogTimer = null;
+  let closeTimer = null;
+  let isOpen = false;
+
+  const clearAnimTimers = () => {
+    if (dialogTimer != null) {
+      window.clearTimeout(dialogTimer);
+      dialogTimer = null;
+    }
+    if (closeTimer != null) {
+      window.clearTimeout(closeTimer);
+      closeTimer = null;
+    }
+  };
 
   if (emailLabel) {
     emailLabel.textContent = CONTACT.toEmail;
@@ -119,39 +136,52 @@ export function initContactModal() {
     syncSubmitState();
   };
 
+  const finishClose = () => {
+    modal.hidden = true;
+    modal.classList.remove("contact-modal--visible", "contact-modal--dialog-in");
+    resetForm();
+    lastFocused?.focus?.();
+    isOpen = false;
+  };
+
   const open = () => {
+    if (isOpen) return;
+    clearAnimTimers();
+
     lastFocused = document.activeElement;
     resetForm();
+    isOpen = true;
+
     modal.hidden = false;
     modal.setAttribute("aria-hidden", "false");
     document.body.classList.add("contact-modal-open");
+    modal.classList.remove("contact-modal--visible", "contact-modal--dialog-in");
+
+    // Scene first, then form a beat later.
     requestAnimationFrame(() => {
       modal.classList.add("contact-modal--visible");
-      focusables()[0]?.focus();
+      dialogTimer = window.setTimeout(() => {
+        if (!isOpen) return;
+        modal.classList.add("contact-modal--dialog-in");
+        focusables()[0]?.focus();
+      }, DIALOG_DELAY_MS);
     });
   };
 
   const close = () => {
+    if (!isOpen && modal.hidden) return;
+    clearAnimTimers();
+
     playCtaClose(CTA_CLICK_RATE);
-    modal.classList.remove("contact-modal--visible");
     modal.setAttribute("aria-hidden", "true");
     document.body.classList.remove("contact-modal-open");
 
-    const onEnd = (event) => {
-      if (event.propertyName !== "opacity") return;
-      modal.removeEventListener("transitionend", onEnd);
-      modal.hidden = true;
-      resetForm();
-      lastFocused?.focus?.();
-    };
-
-    modal.addEventListener("transitionend", onEnd);
-    window.setTimeout(() => {
-      if (modal.hidden) return;
-      modal.hidden = true;
-      resetForm();
-      lastFocused?.focus?.();
-    }, 320);
+    // Form out first, then background.
+    modal.classList.remove("contact-modal--dialog-in");
+    dialogTimer = window.setTimeout(() => {
+      modal.classList.remove("contact-modal--visible");
+      closeTimer = window.setTimeout(finishClose, SCENE_FADE_MS + 40);
+    }, DIALOG_FADE_MS * 0.55);
   };
 
   openBtn.addEventListener("click", () => {

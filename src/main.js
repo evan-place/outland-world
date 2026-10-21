@@ -2,7 +2,7 @@ import assetsManifest from "./data/assets.json";
 import beatLayouts from "./data/beat-layouts.json";
 import storyData from "./data/story.json";
 import { initAmbientAudio } from "./audio/ambient-audio.js";
-import { initRail } from "./chrome/rail.js";
+import { initAboutModal } from "./chrome/about-modal.js";
 import { initSelectionFx } from "./chrome/selection-fx.js";
 import { BeatAssets } from "./scene/beat-assets.js";
 import { StoryText } from "./scene/story-text.js";
@@ -19,7 +19,7 @@ function main() {
   const storyText = new StoryText(storyTextA, storyTextB, storyCanvas, beats);
 
   initAmbientAudio();
-  initRail();
+  initAboutModal();
   initSelectionFx();
   document.documentElement.dataset.theme = "light";
 
@@ -65,6 +65,19 @@ function main() {
   window.addEventListener("outland:themechange", () => {
     void storyText.resize();
   });
+
+  // Asset layout tuner — local DEV only (right-click logo, or ?tuner=1).
+  if (import.meta.env.DEV) {
+    import("./dev/asset-layout-tuner-gate.js").then(({ mountAssetLayoutTunerGate }) => {
+      mountAssetLayoutTunerGate({
+        beatAssets,
+        storyText,
+        storyScroll,
+        beats,
+        assets: assetsManifest.assets,
+      });
+    });
+  }
 
   document.body.focus({ preventScroll: true });
 

@@ -15,12 +15,12 @@
 
 @media (min-width: 769px) {
   #story-layer {
-    left: var(--rail-width-closed);
+    left: 0;
   }
 
   .story-stage,
   .story-text-measure {
-    width: min(var(--story-max-width), calc(100vw - var(--rail-width-closed) - 80px));
+    width: min(var(--story-max-width), calc(100vw - 80px));
   }
 }
 
