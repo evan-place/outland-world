@@ -496,17 +496,20 @@ body.contact-modal-open {
   align-items: center;
   justify-content: center;
   height: 40px;
-  padding: 0 20px;
+  /* Match .cta-pill Screen type: optical vertical centering + Screen face. */
+  padding: 3px 20px 0;
   border: none;
   border-radius: 200px;
   background: #fcfcf5;
   color: #1d1c1a;
-  font-family: var(--font-sans);
+  font-family: var(--font-screen);
   font-size: 16px;
   line-height: 1;
   letter-spacing: 0.01em;
   text-transform: uppercase;
   white-space: nowrap;
+  text-box-trim: trim-both;
+  text-box-edge: cap alphabetic;
   cursor: pointer;
   transition: opacity 0.2s ease;
 }
@@ -667,10 +670,6 @@ body.contact-modal-open {
   .contact-modal__submit {
     background: #fcfcf5;
     color: #1d1c1a;
-    font-family: var(--font-screen);
-    text-box-trim: trim-both;
-    text-box-edge: cap alphabetic;
-    padding: 3px 20px 0;
   }
 
   .contact-modal__submit:hover:not(:disabled) {
