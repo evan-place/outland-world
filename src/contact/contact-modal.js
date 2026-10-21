@@ -266,7 +266,7 @@ export function initContactModal() {
 
       await new Promise((r) => setTimeout(r, 400));
       playSuccessClick();
-      headline.textContent = "Thank you. We\u2019ll be in touch.";
+      headline.innerHTML = "Thank you.<br />We\u2019ll be in touch.";
       refreshSelectionFx(headline);
       form.dataset.success = "true";
       if (submitBtn) {
