@@ -218,11 +218,6 @@
           </button>
 
           <div class="about-modal__scroll">
-            <header class="about-modal__clocks">
-              <p id="about-clock-us" class="about-modal__clock"></p>
-              <p id="about-clock-wales" class="about-modal__clock"></p>
-            </header>
-
             <div class="about-modal__story">
               <p id="about-title" class="about-modal__title" data-select-fx>Creators of <em>tomorrow</em></p>
               <p class="about-modal__body" data-select-fx>
@@ -237,6 +232,11 @@
               <figure class="about-modal__photo">
                 <img src="/assets/rail/jordan.jpg" alt="Jordan Jenkins" width="209" height="293" />
               </figure>
+            </div>
+
+            <div class="about-modal__clocks">
+              <p id="about-clock-us" class="about-modal__clock"></p>
+              <p id="about-clock-wales" class="about-modal__clock"></p>
             </div>
 
             <footer class="about-modal__footer">
@@ -277,23 +277,14 @@
 
       <div id="contact-modal" class="contact-modal" hidden aria-hidden="true">
         <div class="contact-modal__scene" aria-hidden="true">
-          <div class="contact-modal__scene-fill"></div>
-          <div class="contact-modal__scene-layer contact-modal__scene-layer--texture">
-            <img src="/assets/contact/scene-base.png" alt="" width="1024" height="1024" decoding="async" />
-          </div>
-          <div class="contact-modal__scene-layer contact-modal__scene-layer--galaxy">
-            <img src="/assets/contact/scene-galaxy.png" alt="" width="720" height="360" decoding="async" />
-          </div>
-          <div class="contact-modal__scene-layer contact-modal__scene-layer--vector">
-            <img src="/assets/contact/scene-vector.png" alt="" width="1600" height="1354" decoding="async" />
-          </div>
-          <div class="contact-modal__scene-layer contact-modal__scene-layer--lands">
-            <img src="/assets/contact/scene-lands.jpg" alt="" width="1920" height="1080" decoding="async" />
-          </div>
-          <div class="contact-modal__scene-layer contact-modal__scene-layer--type">
-            <img src="/assets/contact/scene-type.svg" alt="" width="374" height="80" decoding="async" />
-          </div>
-          <div class="contact-modal__scene-layer contact-modal__scene-layer--stamp"></div>
+          <img
+            class="contact-modal__scene-image"
+            src="/assets/finals/form-bg.webp"
+            alt=""
+            width="1920"
+            height="1080"
+            decoding="async"
+          />
         </div>
         <button type="button" class="contact-modal__backdrop" data-contact-close aria-label="Close"></button>
         <div
